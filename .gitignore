@@ -1,0 +1,60 @@
+# -----------------------------------------------------------------------------
+# File: .gitignore
+# Purpose: Git ignore rules for digi-infrastructure
+# Related: docker-compose.yml
+# Tags: git, ignore
+# -----------------------------------------------------------------------------
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+
+# Docker volumes and data
+data/
+volumes/
+*.sql
+*.dump
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup files
+*.bak
+*.backup
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+
+# AWS credentials
+.aws/
+
+# Restic cache
+.cache/
+restic-cache/
+
+# Monitoring data
+prometheus_data/
+grafana_data/
+
+# Database dumps
+*.sql.gz
+*.dump.gz
+
+
