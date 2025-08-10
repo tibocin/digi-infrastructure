@@ -1,0 +1,9 @@
+# Production Dependencies for PCS
+# Include base requirements
+-r base.txt
+
+# Production Server
+gunicorn==21.2.0
+
+# Monitoring & Error Tracking
+sentry-sdk[fastapi]==1.39.1

@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  pcs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pcs-app
+    environment:
+      - PCS_ENVIRONMENT=development
+      - PCS_DEBUG=true
+      - PCS_SECURITY_SECRET_KEY=development_secret_key_change_in_production
+      - PCS_SECURITY_JWT_SECRET_KEY=development_jwt_secret_key_change_in_production
+      - PCS_DB_HOST=postgres
+      - PCS_DB_PORT=5432
+      - PCS_DB_USER=pcs_user
+      - PCS_DB_PASSWORD=pcs_password
+      - PCS_DB_NAME=pcs_dev
+      - PCS_REDIS_HOST=redis
+      - PCS_REDIS_PORT=6379
+      - PCS_REDIS_DB=0
+      - PCS_CHROMA_HOST=chroma
+      - PCS_CHROMA_PORT=8001
+      - PCS_NEO4J_URI=bolt://neo4j:7687
+      - PCS_NEO4J_USER=neo4j
+      - PCS_NEO4J_PASSWORD=neo4j_password
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+      - chroma
+      - neo4j
+    networks:
+      - digi-net
+    external_links:
+      - digi-infrastructure_postgres_1:postgres
+      - digi-infrastructure_redis_1:redis
+      - digi-infrastructure_chroma_1:chroma
+      - digi-infrastructure_neo4j_1:neo4j
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  digi-net:
+    external: true
+    name: digi-infrastructure_digi-net
