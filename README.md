@@ -1,27 +1,33 @@
 # Digi Infrastructure
 
-Shared database infrastructure for the Digi ecosystem of applications.
+Shared infrastructure foundation for the Digi ecosystem, including database services, dynamic prompting capabilities, and the Prompt and Context Service (PCS).
 
 ## Overview
 
-This repository contains the shared database infrastructure (PostgreSQL, Neo4j, ChromaDB, Redis) and monitoring stack (Prometheus, Grafana) that serves multiple applications in the Digi ecosystem.
+This repository serves as the foundation for the entire Digi ecosystem, providing:
+
+- **Shared Database Infrastructure**: PostgreSQL, Neo4j, ChromaDB, Redis
+- **Dynamic Prompting Architecture**: Prompt and Context Service (PCS) with intelligent context management
+- **Monitoring & Observability**: Prometheus, Grafana, and comprehensive health checks
+- **App Onboarding & Integration**: Complete SDK and onboarding processes for new applications
+- **Multi-App Support**: Infrastructure designed to serve multiple applications simultaneously
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Shared Infrastructure                   │
+│                    Shared Infrastructure                    │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │
-│  │  PostgreSQL │  │    Neo4j    │  │   ChromaDB  │      │
-│  │   Container │  │  Container  │  │  Container  │      │
-│  └─────────────┘  └─────────────┘  └─────────────┘      │
-│         │                │                │              │
-│  ┌──────┴──────┐  ┌──────┴──────┐  ┌──────┴──────┐      │
-│  │ digi_core   │  │ digi_core   │  │ digi_core   │      │
-│  │ lernmi      │  │ lernmi      │  │ lernmi      │      │
-│  │ beep_boop   │  │ beep_boop   │  │ beep_boop   │      │
-│  └─────────────┘  └─────────────┘  └─────────────┘      │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
+│  │  PostgreSQL │  │    Neo4j    │  │   ChromaDB  │          │
+│  │   Container │  │  Container  │  │  Container  │          │
+│  └─────────────┘  └─────────────┘  └─────────────┘          │
+│         │                │                │                 │
+│  ┌──────┴──────┐  ┌──────┴──────┐  ┌──────┴──────┐          │
+│  │ digi_core   │  │ digi_core   │  │ digi_core   │          │
+│  │ lernmi      │  │ lernmi      │  │ lernmi      │          │
+│  │ beep_boop   │  │ beep_boop   │  │ beep_boop   │          │
+│  └─────────────┘  └─────────────┘  └─────────────┘          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -147,6 +153,24 @@ services:
 
 ## License
 
-[Your License Here]
+MIT License
 
+Copyright (c) 2024
 
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
