@@ -12,7 +12,9 @@ services:
     ports:
       - "5432:5432" # Expose for local development
     environment:
-      POSTGRES_MULTIPLE_DATABASES: "digi_core,lernmi,beep_boop,test"
+      POSTGRES_MULTIPLE_DATABASES: "digi_core,lernmi,beep_boop,test,pcs,cvpunk,stackr,bitscrow,devao"
+      POSTGRES_USER: "digi"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-digi}"
 
   neo4j:
     ports:
@@ -34,5 +36,4 @@ services:
   prometheus:
     ports:
       - "9090:9090" # Metrics interface
-
 
