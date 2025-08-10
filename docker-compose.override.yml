@@ -1,0 +1,38 @@
+# -----------------------------------------------------------------------------
+# File: docker-compose.override.yml
+# Purpose: Development overrides for digi-infrastructure
+# Related: docker-compose.yml
+# Tags: compose, development, override
+# -----------------------------------------------------------------------------
+
+version: "3.8"
+
+services:
+  postgres:
+    ports:
+      - "5432:5432" # Expose for local development
+    environment:
+      POSTGRES_MULTIPLE_DATABASES: "digi_core,lernmi,beep_boop,test"
+
+  neo4j:
+    ports:
+      - "7474:7474" # Browser interface
+      - "7687:7687" # Bolt protocol
+
+  chroma:
+    ports:
+      - "8001:8000" # HTTP API
+
+  redis:
+    ports:
+      - "6379:6379" # Redis CLI
+
+  grafana:
+    ports:
+      - "3000:3000" # Web interface
+
+  prometheus:
+    ports:
+      - "9090:9090" # Metrics interface
+
+
