@@ -1,0 +1,55 @@
+# -----------------------------------------------------------------------------
+# File: monitoring/prometheus.yml
+# Purpose: Prometheus configuration for digi-infrastructure monitoring
+# Related: docker-compose.yml
+# Tags: monitoring, prometheus, metrics
+# -----------------------------------------------------------------------------
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # PostgreSQL (if you add postgres_exporter later)
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+
+  # Redis (if you add redis_exporter later)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+
+  # Neo4j (if you add neo4j_exporter later)
+  # - job_name: 'neo4j'
+  #   static_configs:
+  #     - targets: ['neo4j-exporter:9121']
+
+  # ChromaDB (if you add chroma_exporter later)
+  # - job_name: 'chroma'
+  #   static_configs:
+  #     - targets: ['chroma:8000']
+
+  # Infrastructure health checks
+  - job_name: "infrastructure-health"
+    static_configs:
+      - targets:
+          [
+            "localhost:5432",
+            "localhost:7474",
+            "localhost:8001",
+            "localhost:6379",
+          ]
+    metrics_path: "/health"
+    scrape_interval: 30s
+
+
