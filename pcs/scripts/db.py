@@ -34,14 +34,21 @@ def run_command(command: str, cwd: Path = None) -> int:
 def check_database_connection() -> bool:
     """Check if database connection is available."""
     try:
-        # Set a test database URL
-        os.environ.setdefault('DATABASE_URL', 'postgresql://pcs_user:pcs_password@localhost:5432/pcs_db')
+        # Load environment variables from .env file
+        from dotenv import load_dotenv
+        load_dotenv()
+        
+        # Get database URL from environment
+        database_url = os.getenv('DATABASE_URL')
+        if not database_url:
+            print("❌ DATABASE_URL environment variable not set")
+            return False
         
         # Try to create a simple connection
-        from sqlalchemy import create_engine
-        engine = create_engine(os.environ['DATABASE_URL'])
+        from sqlalchemy import create_engine, text
+        engine = create_engine(database_url)
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         print("✅ Database connection successful")
         return True
     except Exception as e:

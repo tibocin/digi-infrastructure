@@ -124,23 +124,23 @@ class Settings(BaseSettings):
     def __init__(self, **kwargs):
         # Initialize nested settings with environment prefixes
         security_data = {
-            k.replace('pcs_security_', ''): v for k, v in os.environ.items()
-            if k.lower().startswith('pcs_security_')
+            k.replace('PCS_SECURITY_', '').lower(): v for k, v in os.environ.items()
+            if k.upper().startswith('PCS_SECURITY_')
         }
         
         database_data = {
-            k.replace('pcs_db_', ''): v for k, v in os.environ.items()
-            if k.lower().startswith('pcs_db_')
+            k.replace('PCS_DB_', '').lower(): v for k, v in os.environ.items()
+            if k.upper().startswith('PCS_DB_')
         }
         
         redis_data = {
-            k.replace('pcs_redis_', ''): v for k, v in os.environ.items()
-            if k.lower().startswith('pcs_redis_')
+            k.replace('PCS_REDIS_', '').lower(): v for k, v in os.environ.items()
+            if k.upper().startswith('PCS_REDIS_')
         }
         
         logging_data = {
-            k.replace('pcs_log_', ''): v for k, v in os.environ.items()
-            if k.lower().startswith('pcs_log_')
+            k.replace('PCS_LOG_', '').lower(): v for k, v in os.environ.items()
+            if k.upper().startswith('PCS_LOG_')
         }
         
         kwargs.setdefault('security', SecuritySettings(**security_data))
