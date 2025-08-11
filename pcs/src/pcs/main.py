@@ -231,7 +231,16 @@ def setup_routes(app: FastAPI, settings: Settings) -> None:
     
     # Include API routers
     from .api.v1.health import router as health_router
+    from .api.v1.prompts import router as prompts_router
+    from .api.v1.contexts import router as contexts_router
+    from .api.v1.conversations import router as conversations_router
+    from .api.v1.admin import router as admin_router
+    
     app.include_router(health_router, prefix=f"{settings.api_prefix}/health", tags=["health"])
+    app.include_router(prompts_router, prefix=f"{settings.api_prefix}/v1", tags=["prompts"])
+    app.include_router(contexts_router, prefix=f"{settings.api_prefix}/v1", tags=["contexts"])
+    app.include_router(conversations_router, prefix=f"{settings.api_prefix}/v1", tags=["conversations"])
+    app.include_router(admin_router, prefix=f"{settings.api_prefix}/v1", tags=["admin"])
 
 
 def main() -> None:
