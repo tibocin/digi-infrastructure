@@ -1,6 +1,6 @@
 """
-Filepath: tests/__init__.py
-Purpose: Test package initialization
-Related Components: Unit tests, Integration tests, Test fixtures
-Tags: tests, testing, pytest
+Test package for PCS (Prompt Crafting Service).
+
+This package contains unit tests, integration tests, and test fixtures
+for all PCS components including repositories, services, and API endpoints.
 """
