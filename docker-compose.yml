@@ -5,8 +5,6 @@
 # Tags: compose, containers, infrastructure
 # -----------------------------------------------------------------------------
 
-version: "3.8"
-
 networks:
   digi-net:
     driver: bridge
@@ -30,14 +28,15 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-digi}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-digi}
       POSTGRES_DB: ${POSTGRES_DB:-digi}
-      POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES:-digi_core,lernmi,beep_boop}
+      POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES:-digi_core,lernmi,beep_boop,pcs}
+      PCS_DB_PASSWORD: ${PCS_DB_PASSWORD:-pcs_pass}
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./scripts/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh:ro
     networks:
       - digi-net
     ports:
-      - "5432:5432"  # Expose for external connections
+      - "5432:5432" # Expose for external connections
 
   # Neo4j Graph Database
   neo4j:
@@ -45,15 +44,15 @@ services:
     container_name: digi-neo4j
     restart: unless-stopped
     environment:
-      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:-digi}"
-      NEO4J_dbms_default__database=neo4j
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:-digi_secure_123}"
+      NEO4J_dbms_default__database: neo4j
     volumes:
       - neo4j_data:/data
     networks:
       - digi-net
     ports:
-      - "7474:7474"  # HTTP
-      - "7687:7687"  # Bolt
+      - "7474:7474" # HTTP
+      - "7687:7687" # Bolt
 
   # ChromaDB Vector Database
   chroma:
@@ -142,5 +141,3 @@ services:
       "echo '0 3 * * * restic backup /backup && restic forget --prune --keep-daily 7 --keep-weekly 4 --keep-monthly 6' > /etc/crontabs/root && crond -f -d 8"
     networks:
       - digi-net
-
-
