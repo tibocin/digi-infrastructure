@@ -1,0 +1,66 @@
+services:
+  # PCS Application with hot reload
+  pcs-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: pcs-dev
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+      - "5678:5678" # Debug port
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+      - /app/venv # Exclude virtual environment
+      - /app/__pycache__
+      - /app/.pytest_cache
+    # depends_on removed - services are in root infrastructure
+    networks:
+      - pcs-dev-net
+    restart: unless-stopped
+    command:
+      ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "src/pcs/main.py"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL connection - using centralized infrastructure
+  # postgres-dev service removed - using root infrastructure postgres service
+
+  # Redis connection - using centralized infrastructure
+  # redis-dev service removed - using root infrastructure redis service
+
+  # ChromaDB connection - using centralized infrastructure
+  # chroma-dev service removed - using root infrastructure chroma service
+
+  # Neo4j connection - using centralized infrastructure
+  # neo4j-dev service removed - using root infrastructure neo4j service
+
+  # pgAdmin for database management
+  pgadmin-dev:
+    image: dpage/pgadmin4:latest
+    container_name: pcs-pgadmin-dev
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@pcs.dev
+      - PGADMIN_DEFAULT_PASSWORD=admin123
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_dev_data:/var/lib/pgadmin
+    networks:
+      - pcs-dev-net
+    # depends_on removed - postgres service is in root infrastructure
+
+volumes:
+  pgadmin_dev_data:
+
+networks:
+  pcs-dev-net:
+    external: true
+    name: digi-infrastructure_digi-net

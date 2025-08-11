@@ -5,8 +5,6 @@
 # Tags: compose, development, override
 # -----------------------------------------------------------------------------
 
-version: "3.8"
-
 services:
   postgres:
     ports:

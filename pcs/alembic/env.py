@@ -8,11 +8,25 @@ Tags: migrations, alembic, database, sqlalchemy
 import os
 import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    # Load .env from the project root (two levels up from alembic/)
+    env_path = Path(__file__).parent.parent / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+        print(f"Loaded environment from: {env_path}")
+    else:
+        print(f"Warning: .env file not found at {env_path}")
+except ImportError:
+    print("Warning: python-dotenv not available, using system environment variables")
 
 # Add the src directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))

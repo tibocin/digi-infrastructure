@@ -60,14 +60,15 @@ This repository serves as the foundation for the entire Digi ecosystem, providin
 
 ## Services
 
-| Service    | Port | Purpose               | Access                                     |
-| ---------- | ---- | --------------------- | ------------------------------------------ |
-| PostgreSQL | 5432 | Relational database   | `postgresql://user:pass@localhost:5432/db` |
-| Neo4j      | 7474 | Graph database        | `http://localhost:7474`                    |
-| ChromaDB   | 8001 | Vector database       | `http://localhost:8001`                    |
-| Redis      | 6379 | Cache & sessions      | `redis://localhost:6379`                   |
-| Prometheus | 9090 | Metrics collection    | `http://localhost:9090`                    |
-| Grafana    | 3000 | Monitoring dashboards | `http://localhost:3000`                    |
+| Service    | Port     | Purpose                      | Access                                     |
+| ---------- | -------- | ---------------------------- | ------------------------------------------ |
+| PostgreSQL | 5432     | Relational database          | `postgresql://user:pass@localhost:5432/db` |
+| Neo4j      | 7474     | Graph database               | `http://localhost:7474`                    |
+| ChromaDB   | 8001     | Vector database              | `http://localhost:8001`                    |
+| Redis      | 6379     | Cache & sessions             | `redis://localhost:6379`                   |
+| **PCS**    | **8000** | **Prompt & Context Service** | **`http://localhost:8000`**                |
+| Prometheus | 9090     | Metrics collection           | `http://localhost:9090`                    |
+| Grafana    | 3000     | Monitoring dashboards        | `http://localhost:3000`                    |
 
 ## Multi-App Database Setup
 
@@ -76,6 +77,12 @@ This infrastructure supports multiple applications, each with its own database:
 - **digi_core**: Main RAG application database
 - **lernmi**: Learning and evaluation database
 - **beep_boop**: Bot application database
+- **pcs**: Prompt and Context Service database
+- **stackr**: Database of bitcoin price, dca purchase schedule, etc
+- **bitscrow**: Bitcoin escrow terms, contracts, ifps, psbt database
+- **satsflow**: Lightening nodes, routing, fees, etc database
+- **devao**: Agentric Devshop agents, prompts, output, etc
+- **cvpunk**: Company, Job and Hiring Manager database
 
 Each app connects using its own credentials and database name.
 
