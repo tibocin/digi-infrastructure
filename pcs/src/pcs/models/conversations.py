@@ -142,13 +142,13 @@ class Conversation(BaseModel):
     # Timing information
     started_at: Mapped[datetime] = mapped_column(
         nullable=False,
-        default=lambda: datetime.utcnow(),
+        default=lambda: datetime.now(datetime.UTC),
         comment="When the conversation was started"
     )
     
     last_activity_at: Mapped[datetime] = mapped_column(
         nullable=False,
-        default=lambda: datetime.utcnow(),
+        default=lambda: datetime.now(datetime.UTC),
         comment="Last activity timestamp"
     )
     
@@ -207,7 +207,7 @@ class Conversation(BaseModel):
         
         self.messages.append(message)
         self.message_count += 1
-        self.last_activity_at = datetime.utcnow()
+        self.last_activity_at = datetime.now(datetime.UTC)
         
         return message
 

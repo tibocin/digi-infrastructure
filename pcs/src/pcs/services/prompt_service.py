@@ -503,7 +503,7 @@ class PromptGenerator:
             
             # Add system context
             context.update({
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(datetime.UTC).isoformat(),
                 'request_id': request.request_id,
                 'template_name': request.template_name
             })
@@ -643,7 +643,7 @@ class PromptGenerator:
         health = {
             'status': 'healthy',
             'components': {},
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(datetime.UTC).isoformat()
         }
         
         try:

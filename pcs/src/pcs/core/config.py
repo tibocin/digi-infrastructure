@@ -11,6 +11,7 @@ from typing import List, Optional
 
 from pydantic import field_validator, Field
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 
 class SecuritySettings(BaseSettings):
@@ -173,10 +174,11 @@ class Settings(BaseSettings):
         """Check if running in production mode."""
         return self.environment == "production"
     
-    class Config:
-        env_prefix = "PCS_"
-        env_file = ".env"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_prefix="PCS_",
+        env_file=".env",
+        case_sensitive=False
+    )
 
 
 @lru_cache()

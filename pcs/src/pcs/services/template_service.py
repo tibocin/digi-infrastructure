@@ -18,7 +18,7 @@ from jinja2 import (
     FileSystemLoader,
     Template,
     TemplateSyntaxError,
-    UndefinedError,
+    StrictUndefined,
     select_autoescape,
     meta
 )
@@ -257,7 +257,7 @@ class VariableInjector:
         """
         return {
             'now': datetime.now,
-            'utcnow': datetime.utcnow,
+            'utcnow': lambda: datetime.now(datetime.UTC),
             'len': len,
             'str': str,
             'int': int,
@@ -321,7 +321,7 @@ class TemplateEngine:
             autoescape=select_autoescape(['html', 'xml']),
             auto_reload=not self.enable_cache,
             cache_size=400 if self.enable_cache else 0,
-            undefined=UndefinedError  # Raise errors for undefined variables
+            undefined=StrictUndefined  # Raise errors for undefined variables
         )
         
         # Add custom filters

@@ -191,7 +191,7 @@ class CommonQueryParams:
         self,
         q: Optional[str] = Query(None, description="Search query"),
         sort_by: Optional[str] = Query(None, description="Field to sort by"),
-        sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order"),
+        sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order"),
         include_deleted: bool = Query(False, description="Include deleted items"),
         created_after: Optional[str] = Query(None, description="Filter by creation date (ISO format)"),
         created_before: Optional[str] = Query(None, description="Filter by creation date (ISO format)")
@@ -207,7 +207,7 @@ class CommonQueryParams:
 def get_common_params(
     q: Optional[str] = Query(None, description="Search query"),
     sort_by: Optional[str] = Query(None, description="Field to sort by"),
-    sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order"),
     include_deleted: bool = Query(False, description="Include deleted items"),
     created_after: Optional[str] = Query(None, description="Filter by creation date (ISO format)"),
     created_before: Optional[str] = Query(None, description="Filter by creation date (ISO format)")

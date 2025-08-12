@@ -6,35 +6,74 @@ Tags: redis, caching, context, async, ttl
 """
 
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Union
 from datetime import datetime, timedelta
+from uuid import UUID
 
 import redis.asyncio as redis
 from redis.asyncio import Redis
+from structlog import get_logger
 
 from .base import RepositoryError
 
 
 class RedisRepository:
     """
-    Redis repository for caching and context management.
+    Redis repository for cache operations and data storage.
     
-    Provides async operations for:
-    - Key-value caching with TTL
-    - Hash operations for structured data
-    - Set operations for collections
-    - List operations for ordered data
-    - JSON serialization/deserialization
+    Provides Redis operations with automatic JSON serialization/deserialization
+    for complex data types while preserving simple strings and numbers.
     """
-
-    def __init__(self, redis_client: Redis):
+    
+    def __init__(self, redis_client: redis.Redis):
         """
-        Initialize Redis repository with client connection.
+        Initialize Redis repository.
         
         Args:
-            redis_client: Async Redis client instance
+            redis_client: Redis async client instance
         """
         self.redis = redis_client
+        self.logger = get_logger(__name__)
+    
+    def _safe_deserialize(self, value_str: str) -> Any:
+        """
+        Safely deserialize a string value.
+        
+        Only deserializes proper JSON objects and arrays, keeps simple 
+        strings and numbers as strings to preserve type expectations.
+        
+        Args:
+            value_str: String value to potentially deserialize
+            
+        Returns:
+            Deserialized object for JSON objects/arrays, original string otherwise
+        """
+        # Only attempt JSON deserialization for values that look like JSON objects or arrays
+        stripped = value_str.strip()
+        if stripped.startswith(('{', '[')):
+            try:
+                return json.loads(value_str)
+            except json.JSONDecodeError:
+                return value_str
+        return value_str
+    
+    def _make_hashable(self, obj: Any) -> Any:
+        """
+        Convert an object to a hashable form for use in sets.
+        
+        Args:
+            obj: Object to make hashable
+            
+        Returns:
+            Hashable representation of the object
+        """
+        if isinstance(obj, dict):
+            # Convert dict to a hashable tuple of sorted items
+            return tuple(sorted(obj.items()))
+        elif isinstance(obj, list):
+            # Convert list to tuple
+            return tuple(obj)
+        return obj
 
     async def set(
         self, 
@@ -248,10 +287,7 @@ class RedisRepository:
                 
                 if isinstance(value, (str, bytes)):
                     value_str = value.decode() if isinstance(value, bytes) else value
-                    try:
-                        result[field_str] = json.loads(value_str)
-                    except json.JSONDecodeError:
-                        result[field_str] = value_str
+                    result[field_str] = self._safe_deserialize(value_str)
                 else:
                     result[field_str] = value
             
@@ -327,10 +363,10 @@ class RedisRepository:
             for member in members:
                 if isinstance(member, (str, bytes)):
                     member_str = member.decode() if isinstance(member, bytes) else member
-                    try:
-                        result.add(json.loads(member_str))
-                    except json.JSONDecodeError:
-                        result.add(member_str)
+                    deserialized = self._safe_deserialize(member_str)
+                    # Make hashable for sets
+                    hashable_value = self._make_hashable(deserialized)
+                    result.add(hashable_value)
                 else:
                     result.add(member)
             
@@ -440,10 +476,7 @@ class RedisRepository:
             for value in values:
                 if isinstance(value, (str, bytes)):
                     value_str = value.decode() if isinstance(value, bytes) else value
-                    try:
-                        result.append(json.loads(value_str))
-                    except json.JSONDecodeError:
-                        result.append(value_str)
+                    result.append(self._safe_deserialize(value_str))
                 else:
                     result.append(value)
             
