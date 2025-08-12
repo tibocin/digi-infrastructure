@@ -50,7 +50,7 @@ class SystemStatsResponse(BaseModel):
 
 class DatabaseMaintenanceRequest(BaseModel):
     """Schema for database maintenance operations."""
-    operation: str = Field(..., regex="^(analyze|vacuum|reindex|cleanup)$", description="Maintenance operation")
+    operation: str = Field(..., pattern="^(analyze|vacuum|reindex|cleanup)$", description="Maintenance operation")
     tables: Optional[List[str]] = Field(None, description="Specific tables (empty for all)")
     dry_run: bool = Field(default=True, description="Perform dry run without actual changes")
     force: bool = Field(default=False, description="Force operation even if risky")
@@ -58,14 +58,14 @@ class DatabaseMaintenanceRequest(BaseModel):
 
 class UserManagementRequest(BaseModel):
     """Schema for user management operations."""
-    action: str = Field(..., regex="^(activate|deactivate|reset_password|change_role)$", description="User action")
+    action: str = Field(..., pattern="^(activate|deactivate|reset_password|change_role)$", description="User action")
     user_ids: List[str] = Field(..., min_items=1, description="Target user IDs")
     parameters: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Action parameters")
 
 
 class CacheManagementRequest(BaseModel):
     """Schema for cache management operations."""
-    operation: str = Field(..., regex="^(flush|clear_pattern|warm|analyze)$", description="Cache operation")
+    operation: str = Field(..., pattern="^(flush|clear_pattern|warm|analyze)$", description="Cache operation")
     pattern: Optional[str] = Field(None, description="Pattern for selective operations")
     keys: Optional[List[str]] = Field(None, description="Specific keys to operate on")
 
@@ -79,7 +79,7 @@ class SystemConfigUpdate(BaseModel):
 
 class BackupRequest(BaseModel):
     """Schema for backup operations."""
-    backup_type: str = Field(..., regex="^(full|incremental|schema_only|data_only)$", description="Backup type")
+    backup_type: str = Field(..., pattern="^(full|incremental|schema_only|data_only)$", description="Backup type")
     include_cache: bool = Field(default=False, description="Include cache data")
     compress: bool = Field(default=True, description="Compress backup")
     encryption: bool = Field(default=True, description="Encrypt backup")
