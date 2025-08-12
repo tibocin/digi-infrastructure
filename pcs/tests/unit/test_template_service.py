@@ -149,7 +149,7 @@ class TestVariableInjector:
         
         context = self.injector.prepare_context(variables)
         
-        assert context["created_at"] == now.isoformat()
+        assert context["created_at"] == now  # Datetime objects are preserved for filters
         assert context["expires_in"] == str(timedelta(hours=1))
     
     def test_prepare_context_with_none_values(self):

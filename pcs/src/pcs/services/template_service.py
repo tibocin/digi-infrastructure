@@ -18,10 +18,20 @@ from jinja2 import (
     FileSystemLoader,
     Template,
     TemplateSyntaxError,
+    Undefined,
     UndefinedError,
     select_autoescape,
     meta
 )
+
+# Custom Undefined class that raises errors
+class StrictUndefined(Undefined):
+    """Custom Undefined class that raises errors for undefined variables."""
+    def __str__(self):
+        raise UndefinedError(f"Variable '{self._undefined_name}' is undefined")
+    
+    def __repr__(self):
+        return f"<StrictUndefined '{self._undefined_name}'>"
 from jinja2.sandbox import SandboxedEnvironment
 
 from ..core.exceptions import PCSError
@@ -234,9 +244,9 @@ class VariableInjector:
         if value is None:
             return ""
         
-        # Handle datetime objects
+        # Handle datetime objects - preserve for filters
         if isinstance(value, datetime):
-            return value.isoformat()
+            return value
         
         # Handle timedelta objects
         if isinstance(value, timedelta):
@@ -321,7 +331,7 @@ class TemplateEngine:
             autoescape=select_autoescape(['html', 'xml']),
             auto_reload=not self.enable_cache,
             cache_size=400 if self.enable_cache else 0,
-            undefined=UndefinedError  # Raise errors for undefined variables
+            undefined=StrictUndefined  # Use custom class that raises errors
         )
         
         # Add custom filters
