@@ -263,7 +263,7 @@ class ChromaRepository:
         except Exception as e:
             raise RepositoryError(f"Failed to delete documents from collection: {str(e)}") from e
 
-    async def count_documents(self, collection: Collection) -> int:
+    async def count_documents(self, collection: Any) -> int:
         """
         Count documents in a collection.
         

@@ -115,7 +115,7 @@ class ConversationSearchRequest(BaseModel):
 
 class ConversationExportRequest(BaseModel):
     """Schema for conversation export operations."""
-    format: str = Field(..., regex="^(json|csv|txt|markdown)$", description="Export format")
+    format: str = Field(..., pattern="^(json|csv|txt|markdown)$", description="Export format")
     include_metadata: bool = Field(default=True, description="Include metadata in export")
     include_context: bool = Field(default=False, description="Include context information")
     date_range: Optional[Dict[str, datetime]] = Field(None, description="Date range for export")
