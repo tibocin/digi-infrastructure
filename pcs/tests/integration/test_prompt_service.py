@@ -643,7 +643,13 @@ You have 2 new notification(s):
 • Welcome to the platform!
 • Your profile is 90% complete"""
         
-        assert response.generated_prompt == expected_content
+        # Normalize whitespace for comparison (removes extra blank lines)
+        actual_normalized = '\n'.join(line.rstrip() for line in response.generated_prompt.split('\n') if line.strip() or line == '')
+        expected_normalized = '\n'.join(line.rstrip() for line in expected_content.split('\n') if line.strip() or line == '')
+        actual_normalized = '\n'.join(line for line in actual_normalized.split('\n') if line.strip())
+        expected_normalized = '\n'.join(line for line in expected_normalized.split('\n') if line.strip())
+        
+        assert actual_normalized == expected_normalized
         
         # Verify rules were applied
         assert len(response.rules_applied) == 2

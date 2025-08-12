@@ -7,7 +7,7 @@ to ensure proper context operations, caching, and validation.
 
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import sys
@@ -36,7 +36,7 @@ class TestContextMetadata:
     
     def test_create_metadata(self):
         """Test creating context metadata."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(
             created_at=now,
             updated_at=now,
@@ -50,7 +50,7 @@ class TestContextMetadata:
     
     def test_metadata_to_dict(self):
         """Test converting metadata to dictionary."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expires = now + timedelta(hours=1)
         metadata = ContextMetadata(
             created_at=now,
@@ -68,7 +68,7 @@ class TestContextMetadata:
     
     def test_metadata_from_dict(self):
         """Test creating metadata from dictionary."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         data = {
             "created_at": now.isoformat(),
             "updated_at": now.isoformat(),
@@ -91,7 +91,7 @@ class TestContext:
     
     def test_create_context(self):
         """Test creating a context."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(created_at=now, updated_at=now)
         
         context = Context(
@@ -110,7 +110,7 @@ class TestContext:
     def test_context_is_expired(self):
         """Test context expiration check."""
         # Not expired context
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         future = now + timedelta(hours=1)
         metadata_future = ContextMetadata(
             created_at=now,
@@ -148,7 +148,7 @@ class TestContext:
     
     def test_context_update_access(self):
         """Test updating access tracking."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(created_at=now, updated_at=now)
         
         context = Context(
@@ -167,7 +167,7 @@ class TestContext:
     
     def test_context_serialization(self):
         """Test context to_dict and from_dict."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(created_at=now, updated_at=now)
         
         original_context = Context(
@@ -197,7 +197,7 @@ class TestContextMerger:
         """Set up test fixtures."""
         self.merger = ContextMerger()
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         self.base_metadata = ContextMetadata(created_at=now, updated_at=now)
         self.update_metadata = ContextMetadata(created_at=now, updated_at=now)
     
@@ -408,7 +408,7 @@ class TestContextValidator:
     
     def test_validate_valid_context(self):
         """Test validation of a valid context."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         future = now + timedelta(hours=1)
         metadata = ContextMetadata(created_at=now, updated_at=now, expires_at=future)
         
@@ -425,7 +425,7 @@ class TestContextValidator:
     
     def test_validate_missing_context_id(self):
         """Test validation with missing context ID."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(created_at=now, updated_at=now)
         
         context = Context(
@@ -442,7 +442,7 @@ class TestContextValidator:
     
     def test_validate_empty_data(self):
         """Test validation with empty data."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(created_at=now, updated_at=now)
         
         context = Context(
@@ -459,7 +459,7 @@ class TestContextValidator:
     
     def test_validate_expired_context(self):
         """Test validation of expired context."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         past = now - timedelta(hours=1)
         metadata = ContextMetadata(created_at=now, updated_at=now, expires_at=past)
         
@@ -477,7 +477,7 @@ class TestContextValidator:
     
     def test_validate_restricted_keys(self):
         """Test validation with restricted keys in data."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(created_at=now, updated_at=now)
         
         context = Context(
@@ -499,7 +499,7 @@ class TestContextValidator:
     
     def test_validate_deeply_nested_data(self):
         """Test validation with deeply nested data."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(created_at=now, updated_at=now)
         
         # Create deeply nested structure beyond limit
@@ -528,7 +528,7 @@ class TestContextValidator:
         # Mock json.dumps to return a very large string
         mock_json_dumps.return_value = "x" * (1024 * 1024 + 1)  # Just over 1MB
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(created_at=now, updated_at=now)
         
         context = Context(
@@ -549,7 +549,7 @@ class TestContextValidator:
         # Mock json.dumps to raise an exception
         mock_json_dumps.side_effect = TypeError("Object not serializable")
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(created_at=now, updated_at=now)
         
         context = Context(
@@ -623,7 +623,7 @@ class TestContextManager:
     async def test_get_context(self):
         """Test getting an existing context."""
         # Setup mock to return a context
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(created_at=now, updated_at=now)
         mock_context = Context(
             context_id="test-123",
@@ -653,7 +653,7 @@ class TestContextManager:
     async def test_update_context(self):
         """Test updating an existing context."""
         # Setup existing context
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(created_at=now, updated_at=now)
         existing_context = Context(
             context_id="test-123",
@@ -700,7 +700,7 @@ class TestContextManager:
     async def test_merge_contexts(self):
         """Test merging multiple contexts."""
         # Setup multiple contexts
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         metadata = ContextMetadata(created_at=now, updated_at=now)
         
         context1 = Context(

@@ -26,7 +26,7 @@ class TemplateError(PCSError):
 import re
 import json
 from jinja2 import (
-    Environment, DictLoader, Template, TemplateSyntaxError, UndefinedError, 
+    Environment, DictLoader, Template, TemplateSyntaxError, StrictUndefined, 
     select_autoescape, meta
 )
 from jinja2.sandbox import SandboxedEnvironment
@@ -156,7 +156,7 @@ class TemplateEngine:
             autoescape=select_autoescape(['html', 'xml']),
             auto_reload=not self.enable_cache,
             cache_size=400 if self.enable_cache else 0,
-            undefined=UndefinedError
+            undefined=StrictUndefined
         )
         
         env.filters.update(self._get_custom_filters())

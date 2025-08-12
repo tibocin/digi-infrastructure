@@ -8,7 +8,7 @@ Tags: template-engine, jinja2, variable-injection, validation, security
 import re
 import json
 from typing import Any, Dict, List, Optional, Set, Union
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from jinja2 import (
@@ -19,6 +19,7 @@ from jinja2 import (
     Template,
     TemplateSyntaxError,
     StrictUndefined,
+    UndefinedError,
     select_autoescape,
     meta
 )
@@ -257,7 +258,7 @@ class VariableInjector:
         """
         return {
             'now': datetime.now,
-            'utcnow': lambda: datetime.now(datetime.UTC),
+            'utcnow': lambda: datetime.now(timezone.utc),
             'len': len,
             'str': str,
             'int': int,
@@ -329,6 +330,32 @@ class TemplateEngine:
         
         return env
     
+    def _format_datetime(self, dt: Any, fmt: str) -> str:
+        """
+        Format datetime object or string.
+        
+        Args:
+            dt: Datetime object or ISO string
+            fmt: Format string
+            
+        Returns:
+            Formatted datetime string
+        """
+        if not dt:
+            return ''
+        
+        if isinstance(dt, str):
+            try:
+                # Try to parse ISO format datetime string
+                dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+            except (ValueError, AttributeError):
+                return str(dt)  # Return as-is if parsing fails
+        
+        if hasattr(dt, 'strftime'):
+            return dt.strftime(fmt)
+        
+        return str(dt)
+
     def _get_custom_filters(self) -> Dict[str, Any]:
         """
         Get custom Jinja2 filters.
@@ -339,7 +366,7 @@ class TemplateEngine:
         return {
             'json': json.dumps,
             'from_json': json.loads,
-            'datetime_format': lambda dt, fmt='%Y-%m-%d %H:%M:%S': dt.strftime(fmt) if dt else '',
+            'datetime_format': lambda dt, fmt='%Y-%m-%d %H:%M:%S': self._format_datetime(dt, fmt),
             'truncate_words': lambda text, length=50: ' '.join(text.split()[:length]) + ('...' if len(text.split()) > length else ''),
             'default_if_none': lambda value, default='': default if value is None else value,
             'safe_string': lambda value: str(value) if value is not None else '',
