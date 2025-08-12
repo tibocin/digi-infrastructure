@@ -163,7 +163,7 @@ class TestContextTypeSchemas:
         data = {
             "query": "test search",
             "context_types": ["user_preference", "conversation"],
-            "scopes": ["user", "shared"],
+            "scopes": ["user", "project"],
             "owner_ids": ["user1", "user2"],
             "project_ids": ["proj1"],
             "tags": ["tag1", "tag2"],
@@ -792,11 +792,11 @@ class TestContextIntegration:
             "context_data": {"secret": "data"}
         }
         
-        # Test shared context access
-        shared_context = {
+        # Test project context access
+        project_context = {
             "context_type_id": str(uuid4()),
-            "name": "shared-context",
-            "scope": "shared",
+            "name": "project-context",
+            "scope": "project",
             "context_data": {"public": "info"}
         }
         
@@ -804,8 +804,8 @@ class TestContextIntegration:
         private_schema = ContextCreate(**private_context)
         assert private_schema.scope == ContextScope.PRIVATE
         
-        shared_schema = ContextCreate(**shared_context)
-        assert shared_schema.scope == ContextScope.SHARED
+        project_schema = ContextCreate(**project_context)
+        assert project_schema.scope == ContextScope.PROJECT
     
     def test_complex_context_merging_scenarios(self):
         """Test complex context merging scenarios."""

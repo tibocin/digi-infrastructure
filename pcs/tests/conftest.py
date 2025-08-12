@@ -9,8 +9,8 @@ import pytest
 from unittest.mock import Mock
 
 # Set test environment variables to avoid config validation errors
-os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only")
-os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-for-testing-only")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only-must-be-at-least-16-chars")
+os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-for-testing-only-must-be-at-least-16-chars")
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test_db")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "test")
