@@ -22,11 +22,10 @@ from pcs.repositories.base import (
     RepositoryError
 )
 from pcs.repositories.redis_repo import RedisRepository
-from pcs.models.base import BaseModel
 
 
 # Mock model for testing
-class MockModel(BaseModel):
+class MockModel:
     """Mock model for repository testing."""
     
     def __init__(self, id=None, name=None, value=None):

@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
 import chromadb
-from chromadb.types import Collection, Documents, Embeddings, Metadatas
 
 from .base import RepositoryError
 
@@ -38,7 +37,7 @@ class ChromaRepository:
         self, 
         name: str, 
         metadata: Optional[Dict[str, Any]] = None
-    ) -> Collection:
+    ) -> Any:
         """
         Create a new collection.
         
@@ -61,7 +60,7 @@ class ChromaRepository:
         except Exception as e:
             raise RepositoryError(f"Failed to create collection {name}: {str(e)}") from e
 
-    async def get_collection(self, name: str) -> Optional[Collection]:
+    async def get_collection(self, name: str) -> Optional[Any]:
         """
         Get an existing collection.
         
@@ -81,7 +80,7 @@ class ChromaRepository:
         self, 
         name: str, 
         metadata: Optional[Dict[str, Any]] = None
-    ) -> Collection:
+    ) -> Any:
         """
         Get existing collection or create if it doesn't exist.
         
@@ -103,11 +102,11 @@ class ChromaRepository:
 
     async def add_documents(
         self,
-        collection: Collection,
-        documents: Documents,
+        collection: Any,
+        documents: Any,
         ids: List[str],
-        metadatas: Optional[Metadatas] = None,
-        embeddings: Optional[Embeddings] = None
+        metadatas: Optional[Any] = None,
+        embeddings: Optional[Any] = None
     ) -> bool:
         """
         Add documents to a collection.
@@ -135,9 +134,9 @@ class ChromaRepository:
 
     async def query_documents(
         self,
-        collection: Collection,
+        collection: Any,
         query_texts: Optional[List[str]] = None,
-        query_embeddings: Optional[Embeddings] = None,
+        query_embeddings: Optional[Any] = None,
         n_results: int = 10,
         where: Optional[Dict[str, Any]] = None,
         where_document: Optional[Dict[str, Any]] = None
@@ -170,7 +169,7 @@ class ChromaRepository:
 
     async def get_documents(
         self,
-        collection: Collection,
+        collection: Any,
         ids: Optional[List[str]] = None,
         where: Optional[Dict[str, Any]] = None,
         where_document: Optional[Dict[str, Any]] = None,
@@ -205,11 +204,11 @@ class ChromaRepository:
 
     async def update_documents(
         self,
-        collection: Collection,
+        collection: Any,
         ids: List[str],
-        documents: Optional[Documents] = None,
-        metadatas: Optional[Metadatas] = None,
-        embeddings: Optional[Embeddings] = None
+        documents: Optional[Any] = None,
+        metadatas: Optional[Any] = None,
+        embeddings: Optional[Any] = None
     ) -> bool:
         """
         Update existing documents in a collection.
@@ -237,7 +236,7 @@ class ChromaRepository:
 
     async def delete_documents(
         self,
-        collection: Collection,
+        collection: Any,
         ids: Optional[List[str]] = None,
         where: Optional[Dict[str, Any]] = None,
         where_document: Optional[Dict[str, Any]] = None
@@ -281,7 +280,7 @@ class ChromaRepository:
 
     async def similarity_search(
         self,
-        collection: Collection,
+        collection: Any,
         query_text: str,
         n_results: int = 5,
         threshold: Optional[float] = None,

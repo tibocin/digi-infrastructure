@@ -191,7 +191,7 @@ class CommonQueryParams:
         self,
         q: Optional[str] = Query(None, description="Search query"),
         sort_by: Optional[str] = Query(None, description="Field to sort by"),
-        sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order"),
+        sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order"),
         include_deleted: bool = Query(False, description="Include deleted items"),
         created_after: Optional[str] = Query(None, description="Filter by creation date (ISO format)"),
         created_before: Optional[str] = Query(None, description="Filter by creation date (ISO format)")
@@ -207,7 +207,7 @@ class CommonQueryParams:
 def get_common_params(
     q: Optional[str] = Query(None, description="Search query"),
     sort_by: Optional[str] = Query(None, description="Field to sort by"),
-    sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order"),
     include_deleted: bool = Query(False, description="Include deleted items"),
     created_after: Optional[str] = Query(None, description="Filter by creation date (ISO format)"),
     created_before: Optional[str] = Query(None, description="Filter by creation date (ISO format)")
@@ -271,6 +271,35 @@ async def get_current_app(
         "permissions": current_user.get("permissions", []),
         "environment": current_user.get("environment", "development")
     }
+
+
+def validate_pagination(page: int = 1, size: int = 20) -> Dict[str, int]:
+    """
+    Validate pagination parameters.
+    
+    Args:
+        page: Page number (1-based)
+        size: Page size
+        
+    Returns:
+        Dict[str, int]: Validated pagination parameters
+        
+    Raises:
+        HTTPException: If pagination parameters are invalid
+    """
+    if page < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Page number must be >= 1"
+        )
+    
+    if size < 1 or size > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Page size must be between 1 and 100"
+        )
+    
+    return {"page": page, "size": size}
 
 
 def validate_uuid(uuid_str: str) -> UUID:
