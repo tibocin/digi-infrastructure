@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
 import chromadb
-from chromadb.api.types import Collection, Documents, Embeddings, Metadatas
+from chromadb.types import Collection, Documents, Embeddings, Metadatas
 
 from .base import RepositoryError
 

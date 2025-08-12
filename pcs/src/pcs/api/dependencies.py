@@ -251,6 +251,28 @@ async def cache_dependency() -> Optional[Any]:
     return None
 
 
+async def get_current_app(
+    current_user: Dict[str, Any] = Depends(require_authentication)
+) -> Dict[str, Any]:
+    """
+    Get current application context from authenticated user.
+    
+    Args:
+        current_user: Current authenticated user
+        
+    Returns:
+        Dict[str, Any]: Application context information
+    """
+    # For now, return a simple app context
+    # In a real implementation, this would fetch app-specific data
+    return {
+        "app_id": current_user.get("app_id", "default"),
+        "app_name": current_user.get("app_name", "PCS"),
+        "permissions": current_user.get("permissions", []),
+        "environment": current_user.get("environment", "development")
+    }
+
+
 def validate_uuid(uuid_str: str) -> UUID:
     """
     Validate and convert string to UUID.
