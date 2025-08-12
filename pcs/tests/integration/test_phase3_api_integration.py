@@ -34,8 +34,27 @@ class TestPhase3APIIntegration:
     @pytest.fixture(scope="class")
     def app(self):
         """Create test FastAPI application."""
+        from unittest.mock import AsyncMock, Mock
+        from pcs.api.dependencies import get_database_session, get_current_user, get_current_app
+        
         settings = get_settings()
         app = create_app(settings)
+        
+        # Override dependencies with mocks
+        def mock_get_db():
+            mock_session = AsyncMock()
+            return mock_session
+        
+        def mock_get_user():
+            return {"id": "test-user-id", "username": "testuser", "is_admin": True}
+        
+        def mock_get_app():
+            return {"app_id": "test-app", "app_name": "PCS", "permissions": ["admin"], "environment": "test"}
+        
+        app.dependency_overrides[get_database_session] = mock_get_db
+        app.dependency_overrides[get_current_user] = mock_get_user
+        app.dependency_overrides[get_current_app] = mock_get_app
+        
         return app
     
     @pytest.fixture(scope="class")

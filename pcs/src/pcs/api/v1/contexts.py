@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ...core.exceptions import PCSError, ValidationError
 from ...models.contexts import (
@@ -46,13 +46,13 @@ class ContextTypeBase(BaseModel):
     supports_vectors: bool = Field(default=False, description="Whether contexts support vector embeddings")
     vector_dimension: Optional[int] = Field(None, description="Dimension of vector embeddings")
     
-    @validator('vector_dimension')
-    def validate_vector_dimension(cls, v, values):
-        if v is not None and v <= 0:
-            raise ValueError("Vector dimension must be positive")
-        if values.get('supports_vectors') and v is None:
+    @model_validator(mode='after')
+    def validate_vector_configuration(self):
+        if self.supports_vectors and self.vector_dimension is None:
             raise ValueError("Vector dimension required when supports_vectors is True")
-        return v
+        if self.vector_dimension is not None and self.vector_dimension <= 0:
+            raise ValueError("Vector dimension must be positive")
+        return self
 
 
 class ContextTypeCreate(ContextTypeBase):
@@ -84,7 +84,8 @@ class ContextBase(BaseModel):
     vector_embedding: Optional[List[float]] = Field(None, description="Vector embedding for semantic search")
     embedding_model: Optional[str] = Field(None, max_length=100, description="Model used for embedding")
     
-    @validator('context_data')
+    @field_validator('context_data')
+    @classmethod
     def validate_context_data(cls, v):
         if not v:
             raise ValueError("Context data cannot be empty")
@@ -120,7 +121,8 @@ class ContextMergeRequest(BaseModel):
     preserve_metadata: bool = Field(default=True, description="Whether to preserve metadata")
     create_new: bool = Field(default=False, description="Create new context instead of updating existing")
     
-    @validator('source_context_ids')
+    @field_validator('source_context_ids')
+    @classmethod
     def validate_source_contexts(cls, v):
         if len(set(v)) != len(v):
             raise ValueError("Duplicate context IDs not allowed")
@@ -140,9 +142,10 @@ class ContextRelationshipCreate(ContextRelationshipBase):
     parent_context_id: UUID = Field(..., description="Parent context ID")
     child_context_id: UUID = Field(..., description="Child context ID")
     
-    @validator('child_context_id')
-    def validate_different_contexts(cls, v, values):
-        if v == values.get('parent_context_id'):
+    @field_validator('child_context_id')
+    @classmethod
+    def validate_different_contexts(cls, v, info):
+        if v == info.data.get('parent_context_id'):
             raise ValueError("Parent and child contexts must be different")
         return v
 
