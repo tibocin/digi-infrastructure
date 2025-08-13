@@ -107,8 +107,6 @@ def setup_test_environment(monkeypatch):
     
     # Mock any external service calls
     monkeypatch.setenv("DISABLE_EXTERNAL_SERVICES", "true")
-<<<<<<< Current (Your changes)
-=======
     
     # Prevent actual database connections
     monkeypatch.setenv("PCS_DB_DIALECT", "sqlite+aiosqlite")
@@ -136,4 +134,4 @@ def mock_current_user():
         "email": "test@example.com",
         "roles": ["user"]
     }
->>>>>>> Incoming (Background Agent changes)
+
