@@ -13,7 +13,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 from ...core.exceptions import PCSError, ValidationError
 from ...models.prompts import PromptTemplate, PromptVersion, PromptRule, PromptStatus, RulePriority
@@ -38,7 +38,7 @@ class PromptTemplateBase(BaseModel):
     tags: Optional[List[str]] = Field(default_factory=list, description="Tags for searching and filtering")
     author: Optional[str] = Field(None, max_length=255, description="Author of the template")
     
-    @validator('tags')
+    @field_validator('tags')
     def validate_tags(cls, v):
         if v and len(v) > 20:
             raise ValueError("Maximum 20 tags allowed")
@@ -66,7 +66,7 @@ class PromptVersionBase(BaseModel):
     variables: Dict[str, Any] = Field(default_factory=dict, description="Variable definitions and types")
     changelog: Optional[str] = Field(None, max_length=1000, description="Changes in this version")
     
-    @validator('content')
+    @field_validator('content')
     def validate_content(cls, v):
         if len(v.strip()) == 0:
             raise ValueError("Template content cannot be empty")
@@ -120,7 +120,7 @@ class PromptGenerationRequest(BaseModel):
     optimization_level: OptimizationLevel = Field(default=OptimizationLevel.BASIC, description="Optimization level")
     cache_ttl_seconds: Optional[int] = Field(None, description="Cache TTL in seconds")
     
-    @validator('template_name', 'template_content')
+    @field_validator('template_name', 'template_content')
     def validate_template_source(cls, v, values):
         # At least one must be provided
         if not v and not values.get('template_content') and not values.get('template_name'):
@@ -136,13 +136,12 @@ class PromptVersionResponse(BaseModel):
     version_number: int
     content: str
     variables: Dict[str, Any]
-    changelog: Optional[str]
-    is_active: bool
+    changelog: Optional[str] = None
+    is_active: bool = True
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PromptRuleResponse(BaseModel):
@@ -157,32 +156,33 @@ class PromptRuleResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PromptTemplateResponse(BaseModel):
     """Response schema for prompt template."""
     id: UUID
     name: str
-    description: Optional[str]
-    category: Optional[str]
-    tags: Optional[List[str]]
-    status: PromptStatus
-    is_system: bool
-    author: Optional[str]
-    version_count: int
+    description: Optional[str] = None
+    category: Optional[str] = None
+    tags: Optional[List[str]] = None
+    status: PromptStatus = PromptStatus.DRAFT
+    is_system: bool = False
+    author: Optional[str] = None
+    version_count: int = 1
+    usage_count: int = 0
+    
+    # Nested responses
+    versions: Optional[List[PromptVersionResponse]] = None
+    current_version: Optional[PromptVersionResponse] = None
+    latest_version: Optional[PromptVersionResponse] = None
+    rules: Optional[List[PromptRuleResponse]] = None
+    
+    # Timestamps
     created_at: datetime
     updated_at: datetime
     
-    # Optional nested data
-    current_version: Optional[PromptVersionResponse] = None
-    latest_version: Optional[PromptVersionResponse] = None
-    versions: Optional[List[PromptVersionResponse]] = None
-    rules: Optional[List[PromptRuleResponse]] = None
-    
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PromptGenerationResponse(BaseModel):
@@ -197,6 +197,8 @@ class PromptGenerationResponse(BaseModel):
     cache_hit: bool
     metadata: Dict[str, Any]
     created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedPromptTemplatesResponse(BaseModel):
@@ -206,6 +208,8 @@ class PaginatedPromptTemplatesResponse(BaseModel):
     page: int
     size: int
     pages: int
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 # API Endpoints
@@ -265,22 +269,22 @@ async def list_prompt_templates(
         # Convert to response schema
         response_templates = []
         for template in paginated_templates:
-            template_data = PromptTemplateResponse.from_orm(template)
+            template_data = PromptTemplateResponse.model_validate(template)
             
             # Include versions if requested
             if include_versions and template.versions:
                 template_data.versions = [
-                    PromptVersionResponse.from_orm(v) for v in template.versions
+                    PromptVersionResponse.model_validate(v) for v in template.versions
                 ]
                 if template.current_version:
-                    template_data.current_version = PromptVersionResponse.from_orm(template.current_version)
+                    template_data.current_version = PromptVersionResponse.model_validate(template.current_version)
                 if template.latest_version:
-                    template_data.latest_version = PromptVersionResponse.from_orm(template.latest_version)
+                    template_data.latest_version = PromptVersionResponse.model_validate(template.latest_version)
             
             # Include rules if requested
             if include_rules and template.rules:
                 template_data.rules = [
-                    PromptRuleResponse.from_orm(r) for r in template.rules
+                    PromptRuleResponse.model_validate(r) for r in template.rules
                 ]
             
             response_templates.append(template_data)
@@ -339,7 +343,7 @@ async def create_prompt_template(
         )
         
         created_template = await repository.create(new_template)
-        return PromptTemplateResponse.from_orm(created_template)
+        return PromptTemplateResponse.model_validate(created_template)
     
     except HTTPException:
         raise
@@ -376,22 +380,22 @@ async def get_prompt_template(
                 detail=f"Template with ID {template_id} not found"
             )
         
-        template_data = PromptTemplateResponse.from_orm(template)
+        template_data = PromptTemplateResponse.model_validate(template)
         
         # Include versions if requested
         if include_versions and template.versions:
             template_data.versions = [
-                PromptVersionResponse.from_orm(v) for v in template.versions
+                PromptVersionResponse.model_validate(v) for v in template.versions
             ]
             if template.current_version:
-                template_data.current_version = PromptVersionResponse.from_orm(template.current_version)
+                template_data.current_version = PromptVersionResponse.model_validate(template.current_version)
             if template.latest_version:
-                template_data.latest_version = PromptVersionResponse.from_orm(template.latest_version)
+                template_data.latest_version = PromptVersionResponse.model_validate(template.latest_version)
         
         # Include rules if requested
         if include_rules and template.rules:
             template_data.rules = [
-                PromptRuleResponse.from_orm(r) for r in template.rules
+                PromptRuleResponse.model_validate(r) for r in template.rules
             ]
         
         return template_data
@@ -442,11 +446,11 @@ async def update_prompt_template(
                 )
         
         # Prepare update data
-        update_data = template_updates.dict(exclude_unset=True)
+        update_data = template_updates.model_dump(exclude_unset=True)
         
         # Update template
         updated_template = await repository.update(template_id, update_data)
-        return PromptTemplateResponse.from_orm(updated_template)
+        return PromptTemplateResponse.model_validate(updated_template)
     
     except HTTPException:
         raise
@@ -561,7 +565,7 @@ async def create_prompt_version(
         # Update template version count
         await template_repo.update(template_id, {"version_count": next_version})
         
-        return PromptVersionResponse.from_orm(created_version)
+        return PromptVersionResponse.model_validate(created_version)
     
     except HTTPException:
         raise
@@ -590,7 +594,7 @@ async def list_prompt_versions(
                 detail=f"Template with ID {template_id} not found"
             )
         
-        return [PromptVersionResponse.from_orm(v) for v in template.versions]
+        return [PromptVersionResponse.model_validate(v) for v in template.versions]
     
     except HTTPException:
         raise
