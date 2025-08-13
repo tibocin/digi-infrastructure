@@ -63,14 +63,21 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI):
     """Application lifespan management."""
     # Startup
+    db_manager = None
     try:
-        # Initialize database
-        db_manager = await get_database_manager()
-        print("Database manager initialized successfully")
-        
-        # Create tables if they don't exist
-        await db_manager.create_all_tables()
-        print("Database tables verified/created")
+        # Initialize database - handle connection failures gracefully
+        try:
+            db_manager = await get_database_manager()
+            print("Database manager initialized successfully")
+            
+            # Create tables if they don't exist
+            await db_manager.create_all_tables()
+            print("Database tables verified/created")
+            
+        except Exception as db_error:
+            print(f"Warning: Database initialization failed: {db_error}")
+            print("Service will start without database connection - suitable for development/testing")
+            db_manager = None
         
         yield
         
@@ -79,12 +86,14 @@ async def lifespan(app: FastAPI):
         raise
     finally:
         # Shutdown
-        try:
-            db_manager = await get_database_manager()
-            await db_manager.close()
-            print("Database connections closed")
-        except Exception as e:
-            print(f"Error during shutdown: {e}")
+        if db_manager:
+            try:
+                await db_manager.close()
+                print("Database connections closed")
+            except Exception as e:
+                print(f"Error during database shutdown: {e}")
+        else:
+            print("No database connections to close")
 
 
 def create_app(settings: Settings = None) -> FastAPI:

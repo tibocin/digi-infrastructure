@@ -8,10 +8,16 @@ Tags: config, settings, environment, pydantic, validation
 import os
 from functools import lru_cache
 from typing import List, Optional
+from pathlib import Path
 
 from pydantic import field_validator, Field
 from pydantic_settings import BaseSettings
 from pydantic import ConfigDict
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
+load_dotenv(env_path)
 
 
 class SecuritySettings(BaseSettings):
@@ -29,6 +35,12 @@ class SecuritySettings(BaseSettings):
         if not v or len(v) < 16:
             raise ValueError("SECRET_KEY must be provided and at least 16 characters long")
         return v
+    
+    model_config = ConfigDict(
+        env_prefix="PCS_SECURITY_",
+        env_file=".env",
+        case_sensitive=False
+    )
 
 
 class DatabaseSettings(BaseSettings):
@@ -62,6 +74,12 @@ class DatabaseSettings(BaseSettings):
         if not v:
             raise ValueError("Database host must be provided")
         return v
+    
+    model_config = ConfigDict(
+        env_prefix="PCS_DB_",
+        env_file=".env",
+        case_sensitive=False
+    )
 
 
 class RedisSettings(BaseSettings):
@@ -82,6 +100,12 @@ class RedisSettings(BaseSettings):
         scheme = "rediss" if self.ssl else "redis"
         password_part = f":{self.password}@" if self.password else ""
         return f"{scheme}://{password_part}{self.host}:{self.port}/{self.db}"
+    
+    model_config = ConfigDict(
+        env_prefix="PCS_REDIS_",
+        env_file=".env",
+        case_sensitive=False
+    )
 
 
 class LoggingSettings(BaseSettings):
@@ -91,6 +115,12 @@ class LoggingSettings(BaseSettings):
     format: str = Field(default="json", description="Log format (json/text)")
     file_enabled: bool = Field(default=True, description="Enable file logging")
     file_path: str = Field(default="logs/pcs.log", description="Log file path")
+    
+    model_config = ConfigDict(
+        env_prefix="PCS_LOGGING_",
+        env_file=".env",
+        case_sensitive=False
+    )
 
 
 class Settings(BaseSettings):
@@ -123,31 +153,11 @@ class Settings(BaseSettings):
     )
     
     def __init__(self, **kwargs):
-        # Initialize nested settings with environment prefixes
-        security_data = {
-            k.replace('PCS_SECURITY_', '').lower(): v for k, v in os.environ.items()
-            if k.upper().startswith('PCS_SECURITY_')
-        }
-        
-        database_data = {
-            k.replace('PCS_DB_', '').lower(): v for k, v in os.environ.items()
-            if k.upper().startswith('PCS_DB_')
-        }
-        
-        redis_data = {
-            k.replace('PCS_REDIS_', '').lower(): v for k, v in os.environ.items()
-            if k.upper().startswith('PCS_REDIS_')
-        }
-        
-        logging_data = {
-            k.replace('PCS_LOG_', '').lower(): v for k, v in os.environ.items()
-            if k.upper().startswith('PCS_LOG_')
-        }
-        
-        kwargs.setdefault('security', SecuritySettings(**security_data))
-        kwargs.setdefault('database', DatabaseSettings(**database_data))
-        kwargs.setdefault('redis', RedisSettings(**redis_data))
-        kwargs.setdefault('logging', LoggingSettings(**logging_data))
+        # Initialize nested settings - they will handle their own environment loading
+        kwargs.setdefault('security', SecuritySettings())
+        kwargs.setdefault('database', DatabaseSettings())
+        kwargs.setdefault('redis', RedisSettings())
+        kwargs.setdefault('logging', LoggingSettings())
         
         super().__init__(**kwargs)
     
@@ -176,7 +186,7 @@ class Settings(BaseSettings):
     
     model_config = ConfigDict(
         env_prefix="PCS_",
-        env_file=".env",
+        env_file="/Users/stephensaunders/r/tibocin/digi-infrastructure/pcs/.env",
         case_sensitive=False
     )
 

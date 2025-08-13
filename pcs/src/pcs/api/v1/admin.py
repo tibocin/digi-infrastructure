@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Background
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ConfigDict
 
 from ...core.config import get_settings
 from ...core.exceptions import PCSError, ValidationError
@@ -46,6 +46,8 @@ class SystemStatsResponse(BaseModel):
     resource_usage: Dict[str, Any]
     uptime_seconds: float
     timestamp: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DatabaseMaintenanceRequest(BaseModel):

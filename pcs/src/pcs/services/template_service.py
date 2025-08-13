@@ -18,20 +18,22 @@ from jinja2 import (
     FileSystemLoader,
     Template,
     TemplateSyntaxError,
-    StrictUndefined,
+    Undefined,
     UndefinedError,
     select_autoescape,
-    meta
+    meta,
+    Undefined
 )
 
 # Custom Undefined class that raises errors
-class StrictUndefined(Undefined):
+class CustomStrictUndefined(Undefined):
     """Custom Undefined class that raises errors for undefined variables."""
     def __str__(self):
         raise UndefinedError(f"Variable '{self._undefined_name}' is undefined")
     
     def __repr__(self):
-        return f"<StrictUndefined '{self._undefined_name}'>"
+        return f"<CustomStrictUndefined '{self._undefined_name}'>"
+        
 from jinja2.sandbox import SandboxedEnvironment
 
 from ..core.exceptions import PCSError
@@ -331,7 +333,7 @@ class TemplateEngine:
             autoescape=select_autoescape(['html', 'xml']),
             auto_reload=not self.enable_cache,
             cache_size=400 if self.enable_cache else 0,
-            undefined=StrictUndefined  # Raise errors for undefined variables
+            undefined=CustomStrictUndefined  # Raise errors for undefined variables
         )
         
         # Add custom filters

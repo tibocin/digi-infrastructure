@@ -8,12 +8,12 @@ Tags: api, conversations, messages, chat, history, lifecycle, fastapi
 import time
 from typing import List, Optional, Dict, Any
 from uuid import UUID, uuid4
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 from ...core.exceptions import PCSError, ValidationError
 from ...models.conversations import (
@@ -77,7 +77,7 @@ class MessageBase(BaseModel):
     input_tokens: Optional[int] = Field(None, ge=0, description="Number of input tokens")
     output_tokens: Optional[int] = Field(None, ge=0, description="Number of output tokens")
     
-    @validator('content')
+    @field_validator('content')
     def validate_content(cls, v):
         if len(v.strip()) == 0:
             raise ValueError("Message content cannot be empty")
@@ -126,68 +126,59 @@ class MessageResponse(BaseModel):
     """Response schema for conversation message."""
     id: UUID
     conversation_id: UUID
-    sequence_number: int
     role: MessageRole
-    message_type: MessageType
     content: str
-    raw_content: Optional[str]
-    message_metadata: Optional[Dict[str, Any]]
-    prompt_template_id: Optional[UUID]
-    context_ids: Optional[List[str]]
-    input_tokens: Optional[int]
-    output_tokens: Optional[int]
-    total_tokens: Optional[int]
-    processing_time_ms: Optional[float]
+    sequence_number: int
+    prompt_template_id: Optional[UUID] = None
+    context_ids: Optional[List[str]] = None
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    metadata: Optional[Dict[str, Any]] = None
+    
+    # Timestamps
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConversationResponse(BaseModel):
     """Response schema for conversation."""
     id: UUID
     title: str
-    description: Optional[str]
+    description: Optional[str] = None
     user_id: str
-    project_id: Optional[str]
-    session_id: Optional[str]
-    status: ConversationStatus
-    priority: ConversationPriority
-    conversation_metadata: Optional[Dict[str, Any]]
-    settings: Optional[Dict[str, Any]]
-    context_ids: Optional[List[str]]
-    active_prompt_template_id: Optional[UUID]
-    started_at: datetime
-    last_activity_at: datetime
-    ended_at: Optional[datetime]
-    message_count: int
-    total_tokens: int
-    created_at: datetime
-    updated_at: datetime
+    is_active: bool = True
+    total_messages: int = 0
+    total_tokens: int = 0
+    tags: Optional[List[str]] = None
+    metadata: Optional[Dict[str, Any]] = None
     
-    # Optional nested data
+    # Nested responses
     messages: Optional[List[MessageResponse]] = None
     latest_message: Optional[MessageResponse] = None
     
-    class Config:
-        from_attributes = True
+    # Timestamps
+    started_at: datetime
+    last_activity_at: datetime
+    created_at: datetime
+    updated_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConversationStatsResponse(BaseModel):
     """Response schema for conversation statistics."""
     conversation_id: UUID
-    message_count: int
-    total_tokens: int
-    average_tokens_per_message: float
-    duration_minutes: Optional[float]
-    user_messages: int
-    assistant_messages: int
-    system_messages: int
-    message_types: Dict[str, int]
-    token_usage_by_role: Dict[str, int]
-    activity_timeline: List[Dict[str, Any]]
+    total_messages: int
+    total_input_tokens: int
+    total_output_tokens: int
+    total_cost: Optional[float] = None
+    average_response_time: Optional[float] = None
+    active_contexts: int
+    prompt_templates_used: int
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedConversationsResponse(BaseModel):
@@ -197,6 +188,8 @@ class PaginatedConversationsResponse(BaseModel):
     page: int
     size: int
     pages: int
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedMessagesResponse(BaseModel):
@@ -206,6 +199,8 @@ class PaginatedMessagesResponse(BaseModel):
     page: int
     size: int
     pages: int
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Conversation Management Endpoints
@@ -282,13 +277,13 @@ async def list_conversations(
         # Convert to response schema
         response_conversations = []
         for conversation in paginated_conversations:
-            conversation_data = ConversationResponse.from_orm(conversation)
+            conversation_data = ConversationResponse.model_validate(conversation)
             
             # Include latest message if requested
             if include_messages and conversation.messages:
                 # Get the latest message
                 latest_message = max(conversation.messages, key=lambda x: x.sequence_number)
-                conversation_data.latest_message = MessageResponse.from_orm(latest_message)
+                conversation_data.latest_message = MessageResponse.model_validate(latest_message)
             
             response_conversations.append(conversation_data)
         
@@ -338,14 +333,14 @@ async def create_conversation(
             settings=conversation_data.settings or {},
             context_ids=conversation_data.context_ids or [],
             active_prompt_template_id=conversation_data.active_prompt_template_id,
-            started_at=datetime.utcnow(),
-            last_activity_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
+            last_activity_at=datetime.now(timezone.utc),
             message_count=0,
             total_tokens=0
         )
         
         created_conversation = await repository.create(new_conversation)
-        return ConversationResponse.from_orm(created_conversation)
+        return ConversationResponse.model_validate(created_conversation)
     
     except Exception as e:
         raise HTTPException(
@@ -389,12 +384,12 @@ async def get_conversation(
                 detail="Access denied to this conversation"
             )
         
-        conversation_data = ConversationResponse.from_orm(conversation)
+        conversation_data = ConversationResponse.model_validate(conversation)
         
         # Include messages if requested
         if include_messages and conversation.messages:
             conversation_data.messages = [
-                MessageResponse.from_orm(msg) for msg in conversation.messages
+                MessageResponse.model_validate(msg) for msg in conversation.messages
             ]
         
         return conversation_data
@@ -444,22 +439,22 @@ async def update_conversation(
             )
         
         # Prepare update data
-        update_data = conversation_updates.dict(exclude_unset=True)
+        update_data = conversation_updates.model_dump(exclude_unset=True)
         
         # Update last activity timestamp
-        update_data['last_activity_at'] = datetime.utcnow()
+        update_data['last_activity_at'] = datetime.now(timezone.utc)
         
         # Handle status transitions
         if 'status' in update_data:
             new_status = update_data['status']
             if new_status == ConversationStatus.COMPLETED and not existing_conversation.ended_at:
-                update_data['ended_at'] = datetime.utcnow()
+                update_data['ended_at'] = datetime.now(timezone.utc)
             elif new_status == ConversationStatus.ACTIVE and existing_conversation.ended_at:
                 update_data['ended_at'] = None
         
         # Update conversation
         updated_conversation = await repository.update(conversation_id, update_data)
-        return ConversationResponse.from_orm(updated_conversation)
+        return ConversationResponse.model_validate(updated_conversation)
     
     except HTTPException:
         raise
@@ -599,7 +594,7 @@ async def list_messages(
         paginated_messages = messages[start_idx:end_idx]
         
         # Convert to response schema
-        response_messages = [MessageResponse.from_orm(msg) for msg in paginated_messages]
+        response_messages = [MessageResponse.model_validate(msg) for msg in paginated_messages]
         
         return PaginatedMessagesResponse(
             items=response_messages,
@@ -692,7 +687,7 @@ async def create_message(
         # Update conversation statistics
         conversation_updates = {
             'message_count': conversation.message_count + 1,
-            'last_activity_at': datetime.utcnow()
+            'last_activity_at': datetime.now(timezone.utc)
         }
         
         if total_tokens:
@@ -700,7 +695,7 @@ async def create_message(
         
         await conv_repository.update(conversation_id, conversation_updates)
         
-        return MessageResponse.from_orm(created_message)
+        return MessageResponse.model_validate(created_message)
     
     except HTTPException:
         raise
@@ -747,7 +742,7 @@ async def get_message(
                 detail=f"Message with ID {message_id} not found in this conversation"
             )
         
-        return MessageResponse.from_orm(message)
+        return MessageResponse.model_validate(message)
     
     except HTTPException:
         raise
@@ -948,7 +943,7 @@ async def search_conversations(
         paginated_conversations = conversations[start_idx:end_idx]
         
         # Convert to response schema
-        response_conversations = [ConversationResponse.from_orm(c) for c in paginated_conversations]
+        response_conversations = [ConversationResponse.model_validate(c) for c in paginated_conversations]
         
         return PaginatedConversationsResponse(
             items=response_conversations,

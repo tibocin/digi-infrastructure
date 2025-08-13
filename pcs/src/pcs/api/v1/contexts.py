@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 
 from ...core.exceptions import PCSError, ValidationError
 from ...models.contexts import (
@@ -170,22 +170,20 @@ class ContextTypeResponse(BaseModel):
     """Response schema for context type."""
     id: UUID
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
     type_enum: ContextTypeEnum
-    schema_definition: Optional[Dict[str, Any]]
-    default_scope: ContextScope
-    is_active: bool
-    is_system: bool
-    supports_vectors: bool
-    vector_dimension: Optional[int]
+    schema_definition: Dict[str, Any]
+    validation_rules: Optional[Dict[str, Any]] = None
+    default_scope: ContextScope = ContextScope.USER
+    max_instances: Optional[int] = None
+    is_system: bool = False
+    context_count: Optional[int] = 0
+    
+    # Timestamps
     created_at: datetime
     updated_at: datetime
     
-    # Optional statistics
-    context_count: Optional[int] = None
-    
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ContextResponse(BaseModel):
@@ -193,27 +191,27 @@ class ContextResponse(BaseModel):
     id: UUID
     context_type_id: UUID
     name: str
-    description: Optional[str]
-    scope: ContextScope
-    owner_id: Optional[str]
-    project_id: Optional[str]
-    context_data: Dict[str, Any]
-    context_metadata: Optional[Dict[str, Any]]
-    is_active: bool
-    priority: int
-    vector_embedding: Optional[List[float]]
-    embedding_model: Optional[str]
-    usage_count: int
+    description: Optional[str] = None
+    data: Dict[str, Any]
+    scope: ContextScope = ContextScope.USER
+    user_id: Optional[str] = None
+    project_id: Optional[str] = None
+    session_id: Optional[str] = None
+    tags: Optional[List[str]] = None
+    metadata: Optional[Dict[str, Any]] = None
+    usage_count: int = 0
+    is_active: bool = True
+    
+    # Nested responses
+    context_type: Optional[ContextTypeResponse] = None
+    parent_relationships: Optional[List['ContextRelationshipResponse']] = None
+    child_relationships: Optional[List['ContextRelationshipResponse']] = None
+    
+    # Timestamps
     created_at: datetime
     updated_at: datetime
     
-    # Optional nested data
-    context_type: Optional[ContextTypeResponse] = None
-    parent_relationships: Optional[List["ContextRelationshipResponse"]] = None
-    child_relationships: Optional[List["ContextRelationshipResponse"]] = None
-    
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ContextRelationshipResponse(BaseModel):
@@ -222,32 +220,32 @@ class ContextRelationshipResponse(BaseModel):
     parent_context_id: UUID
     child_context_id: UUID
     relationship_type: RelationshipType
-    strength: float
-    metadata: Optional[Dict[str, Any]]
-    is_bidirectional: bool
-    created_at: datetime
-    updated_at: datetime
+    relationship_data: Optional[Dict[str, Any]] = None
+    strength: float = 1.0
+    is_active: bool = True
     
-    # Optional nested data
+    # Nested context data (optional)
     parent_context: Optional[ContextResponse] = None
     child_context: Optional[ContextResponse] = None
     
-    class Config:
-        from_attributes = True
+    # Timestamps
+    created_at: datetime
+    updated_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ContextMergeResponse(BaseModel):
     """Response schema for context merge operations."""
     merge_id: str
-    result_context_id: UUID
+    result_context: ContextResponse
     source_context_ids: List[UUID]
-    merge_strategy: MergeStrategy
-    conflicts_resolved: Dict[str, str]
+    strategy_used: str
+    conflicts_resolved: int
+    merge_metadata: Dict[str, Any]
     processing_time_ms: float
-    merged_fields: List[str]
-    preserved_fields: List[str]
-    metadata: Dict[str, Any]
-    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedContextsResponse(BaseModel):
@@ -257,6 +255,8 @@ class PaginatedContextsResponse(BaseModel):
     page: int
     size: int
     pages: int
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedContextTypesResponse(BaseModel):
@@ -266,6 +266,8 @@ class PaginatedContextTypesResponse(BaseModel):
     page: int
     size: int
     pages: int
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Context Type Management Endpoints
@@ -310,7 +312,7 @@ async def list_context_types(
         # Convert to response schema with context counts
         response_types = []
         for ctx_type in paginated_types:
-            type_data = ContextTypeResponse.from_orm(ctx_type)
+            type_data = ContextTypeResponse.model_validate(ctx_type)
             # Add context count if needed
             if hasattr(ctx_type, 'contexts'):
                 type_data.context_count = len(ctx_type.contexts)
@@ -371,7 +373,7 @@ async def create_context_type(
         )
         
         created_type = await repository.create(new_type)
-        return ContextTypeResponse.from_orm(created_type)
+        return ContextTypeResponse.model_validate(created_type)
     
     except HTTPException:
         raise
@@ -450,21 +452,21 @@ async def list_contexts(
         # Convert to response schema
         response_contexts = []
         for context in paginated_contexts:
-            context_data = ContextResponse.from_orm(context)
+            context_data = ContextResponse.model_validate(context)
             
             # Include context type if requested
             if include_type and context.context_type:
-                context_data.context_type = ContextTypeResponse.from_orm(context.context_type)
+                context_data.context_type = ContextTypeResponse.model_validate(context.context_type)
             
             # Include relationships if requested
             if include_relationships:
                 if context.parent_relationships:
                     context_data.parent_relationships = [
-                        ContextRelationshipResponse.from_orm(r) for r in context.parent_relationships
+                        ContextRelationshipResponse.model_validate(r) for r in context.parent_relationships
                     ]
                 if context.child_relationships:
                     context_data.child_relationships = [
-                        ContextRelationshipResponse.from_orm(r) for r in context.child_relationships
+                        ContextRelationshipResponse.model_validate(r) for r in context.child_relationships
                     ]
             
             response_contexts.append(context_data)
@@ -544,7 +546,7 @@ async def create_context(
         )
         
         created_context = await context_repo.create(new_context)
-        return ContextResponse.from_orm(created_context)
+        return ContextResponse.model_validate(created_context)
     
     except HTTPException:
         raise
@@ -593,21 +595,21 @@ async def get_context(
         await repository.update(context_id, {"usage_count": context.usage_count + 1})
         context.usage_count += 1
         
-        context_data = ContextResponse.from_orm(context)
+        context_data = ContextResponse.model_validate(context)
         
         # Include context type if requested
         if include_type and context.context_type:
-            context_data.context_type = ContextTypeResponse.from_orm(context.context_type)
+            context_data.context_type = ContextTypeResponse.model_validate(context.context_type)
         
         # Include relationships if requested
         if include_relationships:
             if context.parent_relationships:
                 context_data.parent_relationships = [
-                    ContextRelationshipResponse.from_orm(r) for r in context.parent_relationships
+                    ContextRelationshipResponse.model_validate(r) for r in context.parent_relationships
                 ]
             if context.child_relationships:
                 context_data.child_relationships = [
-                    ContextRelationshipResponse.from_orm(r) for r in context.child_relationships
+                    ContextRelationshipResponse.model_validate(r) for r in context.child_relationships
                 ]
         
         return context_data
@@ -656,11 +658,11 @@ async def update_context(
             )
         
         # Prepare update data
-        update_data = context_updates.dict(exclude_unset=True)
+        update_data = context_updates.model_dump(exclude_unset=True)
         
         # Update context
         updated_context = await repository.update(context_id, update_data)
-        return ContextResponse.from_orm(updated_context)
+        return ContextResponse.model_validate(updated_context)
     
     except HTTPException:
         raise
@@ -835,18 +837,16 @@ async def merge_contexts(
         
         return ContextMergeResponse(
             merge_id=str(uuid4()),
-            result_context_id=result_context_id,
+            result_context=ContextResponse.model_validate(await repository.get_by_id(result_context_id)), # Fetch full context for response
             source_context_ids=merge_request.source_context_ids,
-            merge_strategy=merge_request.merge_strategy,
-            conflicts_resolved=conflicts_resolved,
-            processing_time_ms=processing_time,
-            merged_fields=merged_fields,
-            preserved_fields=preserved_fields,
-            metadata={
+            strategy_used=merge_request.merge_strategy.value,
+            conflicts_resolved=len(conflicts_resolved),
+            merge_metadata={
                 "total_fields": len(merged_data),
                 "conflicts_count": len(conflicts_resolved),
                 "preserve_metadata": merge_request.preserve_metadata
             },
+            processing_time_ms=processing_time,
             created_at=datetime.utcnow()
         )
     
@@ -938,7 +938,7 @@ async def search_contexts(
         paginated_contexts = contexts[start_idx:end_idx]
         
         # Convert to response schema
-        response_contexts = [ContextResponse.from_orm(c) for c in paginated_contexts]
+        response_contexts = [ContextResponse.model_validate(c) for c in paginated_contexts]
         
         return PaginatedContextsResponse(
             items=response_contexts,

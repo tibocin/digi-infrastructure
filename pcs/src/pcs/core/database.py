@@ -165,8 +165,10 @@ class DatabaseManager:
                     "checked_in": pool.checkedin(),
                     "checked_out": pool.checkedout(),
                     "overflow": pool.overflow(),
-                    "invalid": pool.invalid(),
                 })
+                # Check if invalid method exists before calling it
+                if hasattr(pool, 'invalid'):
+                    pool_info["invalid"] = pool.invalid()
             else:
                 # For StaticPool or other pool types without statistics
                 pool_info["note"] = "Pool statistics not available for this pool type"
