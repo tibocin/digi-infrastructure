@@ -8,7 +8,7 @@ Tags: logging, structured-logging, async, monitoring
 import logging as stdlib_logging
 import sys
 from typing import Any, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import structlog
 from structlog.stdlib import LoggerFactory
@@ -159,7 +159,7 @@ def log_function_call(func_name: str, **context: Any) -> None:
     logger.debug(
         "Function called",
         function=func_name,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         **context
     )
 
@@ -183,7 +183,7 @@ def log_performance_metric(
         operation=operation,
         duration=duration,
         duration_ms=duration * 1000,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         **context
     )
 
@@ -209,6 +209,6 @@ def log_security_event(
         event_type=event_type,
         user_id=user_id,
         ip_address=ip_address,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         **context
     )

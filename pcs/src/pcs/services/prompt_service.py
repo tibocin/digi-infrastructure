@@ -8,7 +8,7 @@ Tags: prompt-generation, template-processing, context-injection, rule-evaluation
 import time
 import hashlib
 from typing import Any, Dict, List, Optional, Set, Union
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, asdict
 from enum import Enum
 from uuid import uuid4
@@ -503,7 +503,7 @@ class PromptGenerator:
             
             # Add system context
             context.update({
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'request_id': request.request_id,
                 'template_name': request.template_name
             })
@@ -643,7 +643,7 @@ class PromptGenerator:
         health = {
             'status': 'healthy',
             'components': {},
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
         
         try:

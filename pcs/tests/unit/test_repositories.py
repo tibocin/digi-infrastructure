@@ -22,14 +22,25 @@ from pcs.repositories.base import (
     RepositoryError
 )
 from pcs.repositories.redis_repo import RedisRepository
+from pcs.models.base import BaseModel
+from sqlalchemy import String
+from sqlalchemy.orm import Mapped, mapped_column
+from typing import Optional
 
 
 # Mock model for testing
 class MockModel:
     """Mock model for repository testing."""
+    __tablename__ = "test_mock_models"
     
-    def __init__(self, id=None, name=None, value=None):
-        self.id = id or uuid4()
+    # Additional test columns beyond the base columns (id, created_at, updated_at)
+    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    value: Mapped[Optional[int]] = mapped_column(nullable=True)
+    
+    def __init__(self, id=None, name=None, value=None, **kwargs):
+        super().__init__(**kwargs)
+        if id is not None:
+            self.id = id
         self.name = name
         self.value = value
 
@@ -536,16 +547,19 @@ class TestRedisRepository:
         
         result = await self.repository.smembers(key, deserialize=True)
         
-        expected_members = {"string", "42", {"complex": "data"}}
-        # Convert set to comparable format (since sets with dicts aren't directly comparable)
+        # Note: The set contains hashable representations of deserialized data
+        # Convert set to list for checking since dictionary objects become tuples
         result_list = list(result)
         assert len(result_list) == 3
+        
+        # Check for simple string members
         assert "string" in result
         assert "42" in result
-        # Check if the complex data was deserialized correctly
-        complex_items = [item for item in result if isinstance(item, dict)]
-        assert len(complex_items) == 1
-        assert complex_items[0] == {"complex": "data"}
+        
+        # Check if complex data was deserialized and made hashable
+        # The dictionary {"complex": "data"} becomes a tuple (('complex', 'data'),)
+        complex_tuple = tuple(sorted({"complex": "data"}.items()))
+        assert complex_tuple in result
     
     @pytest.mark.asyncio
     async def test_lpush_with_serialization(self):

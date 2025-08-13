@@ -8,7 +8,7 @@ Tags: context-management, redis-caching, ttl-management, context-merging, perfor
 import json
 import hashlib
 from typing import Any, Dict, List, Optional, Union, Set
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from dataclasses import dataclass, asdict
 from uuid import UUID, uuid4
@@ -110,13 +110,13 @@ class Context:
     def is_expired(self) -> bool:
         """Check if context has expired."""
         if self.metadata.expires_at:
-            return datetime.utcnow() > self.metadata.expires_at
+            return datetime.now(timezone.utc) > self.metadata.expires_at
         return False
     
     def update_access(self) -> None:
         """Update access tracking."""
         self.metadata.access_count += 1
-        self.metadata.last_accessed = datetime.utcnow()
+        self.metadata.last_accessed = datetime.now(timezone.utc)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -238,7 +238,7 @@ class ContextCache:
             if ttl:
                 cache_ttl = ttl
             elif context.metadata.expires_at:
-                cache_ttl = context.metadata.expires_at - datetime.utcnow()
+                cache_ttl = context.metadata.expires_at - datetime.now(timezone.utc)
                 if cache_ttl.total_seconds() <= 0:
                     return False  # Already expired
             
@@ -401,7 +401,7 @@ class ContextMerger:
             # Update metadata
             merged_metadata = ContextMetadata(
                 created_at=base_context.metadata.created_at,
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(timezone.utc),
                 expires_at=update_context.metadata.expires_at or base_context.metadata.expires_at,
                 access_count=base_context.metadata.access_count,
                 last_accessed=base_context.metadata.last_accessed,
@@ -510,7 +510,7 @@ class ContextValidator:
         errors.extend(self._validate_data_structure(context.data))
         
         # Validate expiration
-        if context.metadata.expires_at and context.metadata.expires_at <= datetime.utcnow():
+        if context.metadata.expires_at and context.metadata.expires_at <= datetime.now(timezone.utc):
             errors.append("Context has already expired")
         
         return errors
@@ -590,7 +590,7 @@ class ContextManager:
             context_id = str(uuid4())
             
             # Create metadata
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             expires_at = now + ttl if ttl else None
             
             metadata = ContextMetadata(
@@ -665,8 +665,8 @@ class ContextManager:
             
             # Create update context
             update_metadata = ContextMetadata(
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
             )
             
             update_context = Context(
