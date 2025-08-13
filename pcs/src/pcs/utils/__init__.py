@@ -15,12 +15,15 @@ from .logger import (
 )
 
 from .metrics import (
-    PrometheusMetrics,
-    get_metrics,
-    record_request_metrics,
-    record_business_metrics,
-    measure_operation,
-    start_metrics_endpoint
+    MetricsCollector,
+    QueryMetric,
+    PerformanceMonitor,
+    track_query_performance,
+    get_metrics_collector,
+    record_manual_metric,
+    get_performance_summary,
+    get_performance_trends,
+    clear_all_metrics
 )
 
 __all__ = [
@@ -33,10 +36,13 @@ __all__ = [
     "log_security_event",
     
     # Metrics utilities
-    "PrometheusMetrics",
-    "get_metrics",
-    "record_request_metrics",
-    "record_business_metrics",
-    "measure_operation",
-    "start_metrics_endpoint"
+    "MetricsCollector",
+    "QueryMetric",
+    "PerformanceMonitor",
+    "track_query_performance",
+    "get_metrics_collector",
+    "record_manual_metric",
+    "get_performance_summary",
+    "get_performance_trends",
+    "clear_all_metrics"
 ]
