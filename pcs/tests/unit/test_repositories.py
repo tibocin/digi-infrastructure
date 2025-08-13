@@ -29,7 +29,7 @@ from typing import Optional
 
 
 # Mock model for testing
-class MockModel:
+class MockModel(BaseModel):
     """Mock model for repository testing."""
     __tablename__ = "test_mock_models"
     
@@ -70,7 +70,15 @@ class TestBaseRepository:
     
     def setup_method(self):
         """Set up test fixtures."""
-        self.mock_session = Mock()
+        self.mock_session = AsyncMock()
+        # Configure common async methods
+        self.mock_session.execute = AsyncMock()
+        self.mock_session.commit = AsyncMock()
+        self.mock_session.rollback = AsyncMock()
+        self.mock_session.close = AsyncMock()
+        self.mock_session.refresh = AsyncMock()
+        self.mock_session.add = Mock()  # add() is not async
+        
         self.repository = BaseRepository(self.mock_session, MockModel)
     
     @pytest.mark.asyncio
