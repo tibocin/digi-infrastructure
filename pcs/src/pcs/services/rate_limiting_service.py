@@ -15,7 +15,23 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
-import redis.asyncio as aioredis
+# Optional import for Redis
+try:
+    import redis.asyncio as aioredis
+    HAS_REDIS = True
+except ImportError:
+    HAS_REDIS = False
+    # Mock aioredis for testing
+    class MockRedisClient:
+        def __init__(self, *args, **kwargs):
+            pass
+        async def close(self):
+            pass
+    
+    class MockAioRedis:
+        Redis = MockRedisClient
+    
+    aioredis = MockAioRedis()
 from fastapi import Request, Response, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 

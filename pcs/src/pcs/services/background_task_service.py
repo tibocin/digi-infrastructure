@@ -16,7 +16,28 @@ from typing import Any, Callable, Dict, List, Optional, Union
 from dataclasses import dataclass, asdict
 from contextlib import asynccontextmanager
 
-import redis.asyncio as aioredis
+# Optional import for Redis
+try:
+    import redis.asyncio as aioredis
+    HAS_REDIS = True
+except ImportError:
+    HAS_REDIS = False
+    # Mock aioredis for testing
+    class MockRedisClient:
+        def __init__(self, *args, **kwargs):
+            pass
+        async def close(self):
+            pass
+    
+    class MockAioRedis:
+        Redis = MockRedisClient
+        
+        def __init__(self, *args, **kwargs):
+            pass
+        async def close(self):
+            pass
+    
+    aioredis = MockAioRedis()
 from fastapi import BackgroundTasks as FastAPIBackgroundTasks
 from pydantic import BaseModel, Field
 

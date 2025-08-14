@@ -19,7 +19,23 @@ from dataclasses import dataclass
 from urllib.parse import urlparse
 
 import httpx
-import redis.asyncio as aioredis
+# Optional import for Redis
+try:
+    import redis.asyncio as aioredis
+    HAS_REDIS = True
+except ImportError:
+    HAS_REDIS = False
+    # Mock aioredis for testing
+    class MockRedisClient:
+        def __init__(self, *args, **kwargs):
+            pass
+        async def close(self):
+            pass
+    
+    class MockAioRedis:
+        Redis = MockRedisClient
+    
+    aioredis = MockAioRedis()
 from pydantic import BaseModel, Field, field_validator
 
 from pcs.core.config import get_settings

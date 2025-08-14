@@ -18,7 +18,7 @@ from collections import defaultdict, deque
 import threading
 from contextlib import asynccontextmanager
 
-import structlog
+from ..utils.logger import get_logger
 from prometheus_client import (
     Counter, Histogram, Gauge, Summary, Info, 
     CollectorRegistry, generate_latest, CONTENT_TYPE_LATEST,
@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field
 from ..core.exceptions import PCSError
 from ..utils.metrics import get_metrics_collector
 
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class AlertSeverity(str, Enum):
