@@ -16,9 +16,37 @@ from enum import Enum
 from collections import defaultdict
 import asyncio
 
-import redis.asyncio as redis
-from redis.asyncio import Redis
-from structlog import get_logger
+# Optional imports for testing environments
+try:
+    import redis.asyncio as redis
+    from redis.asyncio import Redis
+    HAS_REDIS = True
+except ImportError:
+    HAS_REDIS = False
+    # Create mock Redis classes and exceptions for testing
+    class MockRedisError(Exception):
+        pass
+    
+    class MockRedis:
+        RedisError = MockRedisError
+        
+        def __init__(self, *args, **kwargs):
+            pass
+        
+        async def close(self):
+            pass
+    
+    class Redis:
+        def __init__(self, *args, **kwargs):
+            pass
+        
+        async def close(self):
+            pass
+    
+    # Create a mock redis module-like object
+    redis = MockRedis()
+
+from ..utils.logger import get_logger
 
 from .base import RepositoryError
 from ..utils.metrics import PerformanceMonitor, record_manual_metric
@@ -177,7 +205,7 @@ class EnhancedRedisRepository:
     - Event-driven cache management
     """
     
-    def __init__(self, redis_client: redis.Redis):
+    def __init__(self, redis_client: "redis.Redis"):
         """
         Initialize enhanced Redis repository.
         
