@@ -23,8 +23,8 @@ load_dotenv(env_path)
 class SecuritySettings(BaseSettings):
     """Security-related configuration."""
     
-    secret_key: str = Field(..., description="Secret key for session management")
-    jwt_secret_key: str = Field(..., description="JWT secret key")
+    secret_key: str = Field(default="test-secret-key-for-development-only", description="Secret key for session management")
+    jwt_secret_key: str = Field(default="test-jwt-secret-key-for-development-only", description="JWT secret key")
     jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
     jwt_expire_minutes: int = Field(default=30, description="JWT expiration time in minutes")
     api_key_header: str = Field(default="X-API-Key", description="API key header name")
