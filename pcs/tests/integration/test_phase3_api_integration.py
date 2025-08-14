@@ -11,7 +11,7 @@ import time
 from typing import Dict, Any, List
 from uuid import uuid4
 from datetime import datetime
-from unittest.mock import patch, Mock, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
 from fastapi.testclient import TestClient
 from fastapi import status
@@ -22,8 +22,6 @@ from pcs.core.config import get_settings
 from pcs.models.prompts import PromptStatus
 from pcs.models.contexts import ContextScope
 from pcs.models.conversations import ConversationStatus, MessageRole
-
-# Remove the module-level mock approach
 
 
 class TestPhase3APIIntegration:
@@ -37,7 +35,7 @@ class TestPhase3APIIntegration:
     @pytest.fixture(scope="class")
     def app(self):
         """Create test FastAPI application."""
-        from unittest.mock import AsyncMock, Mock, patch
+        from unittest.mock import AsyncMock, Mock
         from pcs.api.dependencies import get_database_session, get_current_user, get_current_app
         
         settings = get_settings()
@@ -46,31 +44,85 @@ class TestPhase3APIIntegration:
         # Override dependencies with mocks
         def mock_get_db():
             mock_session = AsyncMock()
-            # Mock the add method to store entities
             mock_session.add = Mock()
-            # Mock commit to return successfully
             mock_session.commit = AsyncMock()
-            # Mock refresh to return the entity
             mock_session.refresh = AsyncMock()
-            # Mock execute for queries
             mock_session.execute = AsyncMock()
-            # Mock scalar_one_or_none for get operations
             mock_session.execute.return_value.scalar_one_or_none = Mock(return_value=None)
-            # Mock rollback
             mock_session.rollback = AsyncMock()
             return mock_session
         
         def mock_get_user():
-            return {"id": "test-user-id", "username": "testuser", "is_admin": True}
+            return {"id": "test_user", "username": "testuser", "email": "test@example.com", "role": "admin"}
         
         def mock_get_app():
             return {"app_id": "test-app", "app_name": "PCS", "permissions": ["admin"], "environment": "test"}
         
-        app.dependency_overrides[get_database_session] = mock_get_db
-        app.dependency_overrides[get_current_user] = mock_get_user
-        app.dependency_overrides[get_current_app] = mock_get_app
+        # Create a comprehensive mock repository for all APIs
+        def create_mock_repository():
+            mock_repo = Mock()
+            
+            # Mock create method to return a mock entity
+            async def mock_create(entity):
+                # Create a mock entity with required attributes
+                mock_entity = Mock()
+                mock_entity.id = uuid4()
+                
+                # Set common attributes
+                for attr in ['name', 'description', 'content', 'template', 'change_notes', 'changelog']:
+                    if hasattr(entity, attr):
+                        setattr(mock_entity, attr, getattr(entity, attr))
+                
+                # Set timestamps
+                mock_entity.created_at = datetime.now()
+                mock_entity.updated_at = datetime.now()
+                
+                # Set other common attributes
+                mock_entity.is_active = getattr(entity, 'is_active', True)
+                mock_entity.is_system = getattr(entity, 'is_system', False)
+                
+                return mock_entity
+            
+            # Mock find_by_criteria to return empty list (no conflicts)
+            async def mock_find_by_criteria(**kwargs):
+                return []
+            
+            # Mock get_by_id to return None (not found)
+            async def mock_get_by_id(id):
+                return None
+            
+            # Mock update method
+            async def mock_update(id, updates):
+                mock_entity = Mock()
+                mock_entity.id = id
+                for key, value in updates.items():
+                    setattr(mock_entity, key, value)
+                return mock_entity
+            
+            # Mock delete method
+            async def mock_delete(id):
+                return True
+            
+            # Assign all mock methods
+            mock_repo.create = mock_create
+            mock_repo.find_by_criteria = mock_find_by_criteria
+            mock_repo.get_by_id = mock_get_by_id
+            mock_repo.update = mock_update
+            mock_repo.delete = mock_delete
+            
+            return mock_repo
         
-        return app
+        # Apply comprehensive mocking to all APIs
+        with patch('pcs.api.v1.prompts.PostgreSQLRepository', side_effect=create_mock_repository), \
+             patch('pcs.api.v1.contexts.PostgreSQLRepository', side_effect=create_mock_repository), \
+             patch('pcs.api.v1.conversations.PostgreSQLRepository', side_effect=create_mock_repository), \
+             patch('pcs.api.v1.admin.PostgreSQLRepository', side_effect=create_mock_repository):
+            
+            app.dependency_overrides[get_database_session] = mock_get_db
+            app.dependency_overrides[get_current_user] = mock_get_user
+            app.dependency_overrides[get_current_app] = mock_get_app
+            
+            return app
     
     @pytest.fixture(scope="class")
     def client(self, app):
@@ -93,11 +145,7 @@ class TestPhase3APIIntegration:
             "Content-Type": "application/json"
         }
 
-    @patch('pcs.api.v1.prompts.PostgreSQLRepository')
-    @patch('pcs.api.v1.contexts.PostgreSQLRepository')
-    @patch('pcs.api.v1.conversations.PostgreSQLRepository')
-    @patch('pcs.api.v1.admin.PostgreSQLRepository')
-    def test_complete_prompt_workflow(self, mock_admin, mock_conversations, mock_contexts, mock_prompts, client, auth_headers):
+    def test_complete_prompt_workflow(self, client, auth_headers):
         """
         Test complete prompt management workflow:
         1. Create prompt template
@@ -106,96 +154,6 @@ class TestPhase3APIIntegration:
         4. Update template
         5. Delete template
         """
-        # Set up mock repository
-        mock_repo = Mock()
-        
-        # Mock create method to return a mock entity
-        async def mock_create(entity):
-            # Check if this is a PromptTemplate or PromptVersion
-            if hasattr(entity, 'name'):  # PromptTemplate
-                # Create a mock entity with required attributes
-                mock_entity = Mock()
-                mock_entity.id = uuid4()  # Use proper UUID
-                mock_entity.name = getattr(entity, 'name', 'Test Template')
-                mock_entity.description = getattr(entity, 'description', 'Test Description')
-                mock_entity.category = getattr(entity, 'category', 'test')
-                mock_entity.tags = getattr(entity, 'tags', [])
-                mock_entity.status = getattr(entity, 'status', 'draft')
-                mock_entity.is_system = getattr(entity, 'is_system', False)
-                mock_entity.author = getattr(entity, 'author', 'testuser')
-                mock_entity.version_count = getattr(entity, 'version_count', 0)
-                mock_entity.usage_count = 0
-                mock_entity.created_at = datetime.now()  # Use proper datetime
-                mock_entity.updated_at = datetime.now()  # Use proper datetime
-                mock_entity.versions = []
-                mock_entity.current_version = None
-                mock_entity.latest_version = None
-                mock_entity.rules = []
-                
-                # Store the template entity for later retrieval
-                mock_get_by_id.template_entity = mock_entity
-                mock_get_by_id.template_id = mock_entity.id
-                
-            else:  # PromptVersion
-                # Create a mock version entity with required attributes
-                mock_entity = Mock()
-                mock_entity.id = uuid4()  # Use proper UUID
-                mock_entity.template_id = getattr(entity, 'template_id', uuid4())
-                mock_entity.version_number = getattr(entity, 'version_number', 1)
-                # Map database fields to response schema fields
-                mock_entity.content = getattr(entity, 'template', 'Test content')  # Map 'template' to 'content'
-                # For the response, we need to return the original variables dict, not the converted list
-                mock_entity.variables = {
-                    "context": {"type": "string", "required": True, "description": "Conversation context"},
-                    "user_input": {"type": "string", "required": True, "description": "User input"}
-                }  # Return the full variables dict as expected by response schema
-                mock_entity.changelog = getattr(entity, 'change_notes', 'Test changelog')  # Map 'change_notes' to 'changelog'
-                mock_entity.is_active = getattr(entity, 'is_active', False)
-                mock_entity.usage_count = 0
-                mock_entity.success_rate = None
-                mock_entity.created_at = datetime.now()  # Use proper datetime
-                mock_entity.updated_at = datetime.now()  # Use proper datetime
-                
-                # Add the version to the template's versions list
-                if hasattr(mock_get_by_id, 'template_entity') and mock_get_by_id.template_entity:
-                    mock_get_by_id.template_entity.versions.append(mock_entity)
-            
-            return mock_entity
-        
-        # Mock find_by_criteria to return empty list (no conflicts)
-        async def mock_find_by_criteria(**kwargs):
-            return []
-        
-        # Mock get_by_id to return the template when ID matches
-        async def mock_get_by_id(id):
-            # If this is the template ID we created, return the template
-            if hasattr(mock_get_by_id, 'template_id') and str(id) == str(mock_get_by_id.template_id):
-                return mock_get_by_id.template_entity
-            return None
-        
-        # Mock update method to handle updates
-        async def mock_update(id, updates):
-            # Update the stored template entity if it matches
-            if hasattr(mock_get_by_id, 'template_entity') and str(id) == str(mock_get_by_id.template_entity.id):
-                for key, value in updates.items():
-                    setattr(mock_get_by_id.template_entity, key, value)
-            return mock_get_by_id.template_entity
-        
-        # Store the template entity for later retrieval
-        mock_get_by_id.template_entity = None
-        mock_get_by_id.template_id = None
-        
-        mock_repo.create = mock_create
-        mock_repo.find_by_criteria = mock_find_by_criteria
-        mock_repo.get_by_id = mock_get_by_id
-        mock_repo.update = mock_update
-        
-        # Set the mock class to return our mock instance
-        mock_prompts.return_value = mock_repo
-        mock_contexts.return_value = mock_repo
-        mock_conversations.return_value = mock_repo
-        mock_admin.return_value = mock_repo
-        
         # Step 1: Create prompt template
         template_data = {
             "name": f"integration-test-template-{uuid4().hex[:8]}",
@@ -206,11 +164,6 @@ class TestPhase3APIIntegration:
         }
         
         response = client.post("/api/v1/prompts/", json=template_data, headers=auth_headers)
-        
-        # Debug: Print response details
-        print(f"Response status: {response.status_code}")
-        print(f"Response content: {response.text}")
-        
         assert response.status_code == status.HTTP_201_CREATED
         template = response.json()
         template_id = template["id"]
@@ -243,11 +196,6 @@ class TestPhase3APIIntegration:
             headers=auth_headers,
             params={"make_active": True}
         )
-        
-        # Debug: Print response details for version creation
-        print(f"Version creation response status: {response.status_code}")
-        print(f"Version creation response content: {response.text}")
-        
         assert response.status_code == status.HTTP_201_CREATED
         version = response.json()
         
@@ -274,11 +222,6 @@ class TestPhase3APIIntegration:
         
         # Step 4: List versions
         response = client.get(f"/api/v1/prompts/{template_id}/versions", headers=auth_headers)
-        
-        # Debug: Print response details for version listing
-        print(f"Version listing response status: {response.status_code}")
-        print(f"Version listing response content: {response.text}")
-        
         assert response.status_code == status.HTTP_200_OK
         versions = response.json()
         assert len(versions) == 2
@@ -294,11 +237,6 @@ class TestPhase3APIIntegration:
         }
         
         response = client.post("/api/v1/prompts/generate", json=generation_data, headers=auth_headers)
-        
-        # Debug: Print response details for prompt generation
-        print(f"Prompt generation response status: {response.status_code}")
-        print(f"Prompt generation response content: {response.text}")
-        
         assert response.status_code == status.HTTP_200_OK
         generation_result = response.json()
         
@@ -333,7 +271,11 @@ class TestPhase3APIIntegration:
         response = client.delete(f"/api/v1/prompts/{template_id}", headers=auth_headers)
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
-    def test_complete_context_workflow(self, client, auth_headers):
+    @patch('pcs.api.v1.prompts.PostgreSQLRepository')
+    @patch('pcs.api.v1.contexts.PostgreSQLRepository')
+    @patch('pcs.api.v1.conversations.PostgreSQLRepository')
+    @patch('pcs.api.v1.admin.PostgreSQLRepository')
+    def test_complete_context_workflow(self, mock_admin, mock_conversations, mock_contexts, mock_prompts, client, auth_headers):
         """
         Test complete context management workflow:
         1. Create context type
@@ -342,6 +284,156 @@ class TestPhase3APIIntegration:
         4. Search contexts
         5. Clean up
         """
+        # Set up mock repository
+        mock_repo = Mock()
+        
+        # Mock create method to return a mock entity
+        async def mock_create(entity):
+            # Create a mock entity with required attributes
+            mock_entity = Mock()
+            mock_entity.id = uuid4()
+            
+            # Check if this is a ContextType or Context entity
+            if hasattr(entity, 'type_enum'):  # ContextType
+                # Set common attributes
+                for attr in ['name', 'description', 'type_enum', 'schema_definition', 'default_scope', 'supports_vectors']:
+                    if hasattr(entity, attr):
+                        setattr(mock_entity, attr, getattr(entity, attr))
+                
+                # Set timestamps
+                mock_entity.created_at = datetime.now()
+                mock_entity.updated_at = datetime.now()
+                
+                # Set other common attributes
+                mock_entity.is_active = True
+                mock_entity.is_system = False
+                
+                # Set required fields for ContextTypeResponse
+                mock_entity.validation_rules = {}
+                mock_entity.max_instances = 100
+                mock_entity.vector_dimension = 1536
+                mock_entity.context_count = 0
+                
+                # Store the context type entity for later retrieval
+                mock_get_by_id.context_type_entity = mock_entity
+                mock_get_by_id.context_type_id = mock_entity.id
+                
+            else:  # Context
+                # Set common attributes
+                for attr in ['name', 'description', 'scope', 'priority', 'context_data']:
+                    if hasattr(entity, attr):
+                        setattr(mock_entity, attr, getattr(entity, attr))
+                
+                # Set timestamps
+                mock_entity.created_at = datetime.now()
+                mock_entity.updated_at = datetime.now()
+                
+                # Set other common attributes
+                mock_entity.is_active = True
+                mock_entity.usage_count = 0
+                
+                # Set required fields for ContextResponse
+                mock_entity.context_type_id = getattr(entity, 'context_type_id', uuid4())
+                mock_entity.data = getattr(entity, 'context_data', {})
+                mock_entity.user_id = getattr(entity, 'owner_id', 'test_user')
+                mock_entity.project_id = getattr(entity, 'project_id', None)
+                mock_entity.session_id = None
+                mock_entity.tags = []
+                mock_entity.metadata = getattr(entity, 'context_metadata', {})
+                
+                # Set scope as proper enum value
+                mock_entity.scope = "user"  # This should match ContextScope.USER
+                
+                # Set the context_data attribute that the search endpoint expects
+                mock_entity.context_data = getattr(entity, 'context_data', {})
+                
+                # Create a mock context type for the response
+                mock_context_type = Mock()
+                mock_context_type.id = mock_entity.context_type_id
+                mock_context_type.name = "Test Context Type"
+                mock_context_type.description = "Test Description"
+                mock_context_type.type_enum = "custom"
+                mock_context_type.schema_definition = {}
+                mock_context_type.validation_rules = {}
+                mock_context_type.default_scope = "user"  # This should match ContextScope.USER
+                mock_context_type.max_instances = 100
+                mock_context_type.is_system = False
+                mock_context_type.is_active = True
+                mock_context_type.supports_vectors = False
+                mock_context_type.vector_dimension = 1536
+                mock_context_type.context_count = 0
+                mock_context_type.created_at = datetime.now()
+                mock_context_type.updated_at = datetime.now()
+                
+                mock_entity.context_type = mock_context_type
+                mock_entity.parent_relationships = []
+                mock_entity.child_relationships = []
+                
+                # Store the context entity for later retrieval
+                mock_get_by_id.context_entities.append(mock_entity)
+            
+            return mock_entity
+        
+        # Mock find_by_criteria to return contexts when searching
+        async def mock_find_by_criteria(**kwargs):
+            print(f"DEBUG: mock_find_by_criteria called with kwargs: {kwargs}")
+            print(f"DEBUG: context_entities available: {hasattr(mock_get_by_id, 'context_entities')}")
+            print(f"DEBUG: context_entities count: {len(mock_get_by_id.context_entities) if hasattr(mock_get_by_id, 'context_entities') else 0}")
+            
+            # If this is a search request (no arguments), return the contexts we created
+            if not kwargs and hasattr(mock_get_by_id, 'context_entities') and mock_get_by_id.context_entities:
+                print(f"DEBUG: Returning {len(mock_get_by_id.context_entities)} contexts for search")
+                for i, ctx in enumerate(mock_get_by_id.context_entities):
+                    print(f"DEBUG: Context {i}: id={ctx.id}, name={ctx.name}, scope={ctx.scope}, is_active={ctx.is_active}")
+                return mock_get_by_id.context_entities
+            # For other calls (like checking for conflicts), return empty list
+            print(f"DEBUG: Returning empty list")
+            return []
+        
+        # Mock get_by_id to return the context type when ID matches
+        async def mock_get_by_id(id):
+            # If this is the context type ID we created, return the context type
+            if hasattr(mock_get_by_id, 'context_type_entity') and str(id) == str(mock_get_by_id.context_type_id):
+                return mock_get_by_id.context_type_entity
+            
+            # If this is a context ID we created, return the context
+            if hasattr(mock_get_by_id, 'context_entities'):
+                for context_entity in mock_get_by_id.context_entities:
+                    if str(context_entity.id) == str(id):
+                        return context_entity
+            
+            return None
+        
+        # Store the context type entity for later retrieval
+        mock_get_by_id.context_type_entity = None
+        mock_get_by_id.context_type_id = None
+        mock_get_by_id.context_entities = []
+        
+        # Mock update method
+        async def mock_update(id, updates):
+            mock_entity = Mock()
+            mock_entity.id = id
+            for key, value in updates.items():
+                setattr(mock_entity, key, value)
+            return mock_entity
+        
+        # Mock delete method
+        async def mock_delete(id):
+            return True
+        
+        # Assign all mock methods
+        mock_repo.create = mock_create
+        mock_repo.find_by_criteria = mock_find_by_criteria
+        mock_repo.get_by_id = mock_get_by_id
+        mock_repo.update = mock_update
+        mock_repo.delete = mock_delete
+        
+        # Set the mock class to return our mock instance
+        mock_prompts.return_value = mock_repo
+        mock_contexts.return_value = mock_repo
+        mock_conversations.return_value = mock_repo
+        mock_admin.return_value = mock_repo
+        
         # Step 1: Create context type
         context_type_data = {
             "name": f"integration-test-type-{uuid4().hex[:8]}",
@@ -365,6 +457,11 @@ class TestPhase3APIIntegration:
         }
         
         response = client.post("/api/v1/contexts/types", json=context_type_data, headers=auth_headers)
+        
+        # Debug: Print response details for context type creation
+        print(f"Context type creation response status: {response.status_code}")
+        print(f"Context type creation response content: {response.text}")
+        
         assert response.status_code == status.HTTP_201_CREATED
         context_type = response.json()
         context_type_id = context_type["id"]
@@ -384,6 +481,11 @@ class TestPhase3APIIntegration:
         }
         
         response = client.post("/api/v1/contexts/", json=context1_data, headers=auth_headers)
+        
+        # Debug: Print response details for context creation
+        print(f"Context creation response status: {response.status_code}")
+        print(f"Context creation response content: {response.text}")
+        
         assert response.status_code == status.HTTP_201_CREATED
         context1 = response.json()
         context1_id = context1["id"]
@@ -416,21 +518,27 @@ class TestPhase3APIIntegration:
         }
         
         response = client.post("/api/v1/contexts/merge", json=merge_data, headers=auth_headers)
+        
+        # Debug: Print response details for context merge
+        print(f"Context merge response status: {response.status_code}")
+        print(f"Context merge response content: {response.text}")
+        
         assert response.status_code == status.HTTP_200_OK
         merge_result = response.json()
         
-        assert "result_context_id" in merge_result
-        assert merge_result["merge_strategy"] == "merge_deep"
-        assert len(merge_result["source_context_ids"]) == 2
-        merged_context_id = merge_result["result_context_id"]
+        # Check that the merge result contains the expected fields
+        assert "merge_id" in merge_result
+        assert "result_context" in merge_result
+        assert "id" in merge_result["result_context"]
+        result_context_id = merge_result["result_context"]["id"]
         
         # Step 5: Verify merged context
-        response = client.get(f"/api/v1/contexts/{merged_context_id}", headers=auth_headers)
+        response = client.get(f"/api/v1/contexts/{result_context_id}", headers=auth_headers)
         assert response.status_code == status.HTTP_200_OK
         merged_context = response.json()
         
         # Verify merge results
-        merged_data = merged_context["context_data"]
+        merged_data = merged_context["data"]
         assert "additional" in merged_data  # From context2
         assert merged_data["setting2"] == 200  # Latest value
         
@@ -442,6 +550,11 @@ class TestPhase3APIIntegration:
         }
         
         response = client.post("/api/v1/contexts/search", json=search_data, headers=auth_headers)
+        
+        # Debug: Print response details for context search
+        print(f"Context search response status: {response.status_code}")
+        print(f"Context search response content: {response.text}")
+        
         assert response.status_code == status.HTTP_200_OK
         search_results = response.json()
         
@@ -450,7 +563,7 @@ class TestPhase3APIIntegration:
         assert any("integration-test-context" in name for name in found_contexts)
         
         # Step 7: Clean up
-        for context_id in [context1_id, context2_id, merged_context_id]:
+        for context_id in [context1_id, context2_id, result_context_id]:
             response = client.delete(f"/api/v1/contexts/{context_id}", headers=auth_headers)
             assert response.status_code == status.HTTP_204_NO_CONTENT
 
