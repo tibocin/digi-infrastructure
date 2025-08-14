@@ -177,6 +177,9 @@ class ContextTypeResponse(BaseModel):
     default_scope: ContextScope = ContextScope.USER
     max_instances: Optional[int] = None
     is_system: bool = False
+    is_active: bool = True
+    supports_vectors: bool = False
+    vector_dimension: Optional[int] = None
     context_count: Optional[int] = 0
     
     # Timestamps

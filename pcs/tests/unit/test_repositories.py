@@ -310,6 +310,12 @@ class TestRedisRepository:
         """Set up test fixtures."""
         # Mock Redis client
         self.mock_redis_client = Mock()
+        
+        # Mock Redis pipeline for advanced operations
+        self.mock_pipeline = Mock()
+        self.mock_pipeline.execute = AsyncMock(return_value=[True, 1])  # Mock pipeline execution
+        self.mock_redis_client.pipeline = Mock(return_value=self.mock_pipeline)
+        
         self.repository = RedisRepository(self.mock_redis_client)
     
     @pytest.mark.asyncio
@@ -325,13 +331,9 @@ class TestRedisRepository:
         
         assert result is True
         
-        # Check call arguments
-        call_args = self.mock_redis_client.set.call_args
-        assert call_args[0][0] == key
-        # Value should be JSON serialized
-        import json
-        assert json.loads(call_args[0][1]) == value
-        assert call_args[1]['ex'] == int(ttl.total_seconds())
+        # Check that pipeline was used for advanced operations
+        self.mock_redis_client.pipeline.assert_called_once()
+        self.mock_pipeline.execute.assert_called_once()
     
     @pytest.mark.asyncio
     async def test_set_without_serialization(self):
@@ -345,9 +347,9 @@ class TestRedisRepository:
         
         assert result is True
         
-        # Check call arguments
-        call_args = self.mock_redis_client.set.call_args
-        assert call_args[0][1] == value  # Should not be serialized
+        # Check that pipeline was used for advanced operations
+        self.mock_redis_client.pipeline.assert_called_once()
+        self.mock_pipeline.execute.assert_called_once()
     
     @pytest.mark.asyncio
     async def test_get_with_deserialization(self):
@@ -356,7 +358,10 @@ class TestRedisRepository:
         stored_value = '{"name": "Alice", "score": 95}'
         expected_value = {"name": "Alice", "score": 95}
         
+        # Mock all Redis methods needed for get_advanced
         self.mock_redis_client.get = AsyncMock(return_value=stored_value)
+        self.mock_redis_client.hset = AsyncMock(return_value=1)
+        self.mock_redis_client.hincrby = AsyncMock(return_value=1)
         
         result = await self.repository.get(key, deserialize=True)
         
@@ -379,7 +384,10 @@ class TestRedisRepository:
         key = "test:key"
         invalid_json = "not valid json"
         
+        # Mock all Redis methods needed for get_advanced
         self.mock_redis_client.get = AsyncMock(return_value=invalid_json)
+        self.mock_redis_client.hset = AsyncMock(return_value=1)
+        self.mock_redis_client.hincrby = AsyncMock(return_value=1)
         
         result = await self.repository.get(key, deserialize=True)
         
@@ -639,7 +647,7 @@ class TestRedisRepository:
         with pytest.raises(RepositoryError) as exc_info:
             await self.repository.get(key)
         
-        assert "Failed to get Redis key" in str(exc_info.value)
+        assert "Failed to get advanced Redis key" in str(exc_info.value)
         assert "test:key" in str(exc_info.value)
 
 

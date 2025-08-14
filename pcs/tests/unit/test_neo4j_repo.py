@@ -167,12 +167,8 @@ class TestNeo4jRepositoryEnhanced:
     async def test_get_node_by_id_not_found(self, repository, mock_driver):
         """Test node retrieval when node doesn't exist."""
         # Setup
-        mock_session = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.data.return_value = []
-        mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_data = []
+        mock_session, mock_result = setup_mock_session(mock_driver, mock_data)
         
         # Execute
         result = await repository.get_node_by_id(uuid4())
@@ -184,15 +180,12 @@ class TestNeo4jRepositoryEnhanced:
     async def test_create_relationship_enhanced(self, repository, mock_driver):
         """Test enhanced relationship creation with timestamp."""
         # Setup
-        mock_session = AsyncMock()
-        mock_result = AsyncMock()
-        
         from_id = uuid4()
         to_id = uuid4()
         rel_id = 12345
         created_at = datetime.utcnow().isoformat()
         
-        mock_result.data.return_value = [{
+        mock_data = [{
             "r": {
                 "type": "DEPENDS_ON",
                 "created_at": created_at,
@@ -200,9 +193,7 @@ class TestNeo4jRepositoryEnhanced:
             },
             "rel_id": rel_id
         }]
-        mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_session, mock_result = setup_mock_session(mock_driver, mock_data)
         
         # Execute
         result = await repository.create_relationship(
@@ -224,14 +215,11 @@ class TestNeo4jRepositoryEnhanced:
     async def test_find_related_nodes(self, repository, mock_driver):
         """Test finding related nodes through relationships."""
         # Setup
-        mock_session = AsyncMock()
-        mock_result = AsyncMock()
-        
         start_id = uuid4()
         related_id1 = uuid4()
         related_id2 = uuid4()
         
-        mock_result.data.return_value = [
+        mock_data = [
             {
                 "related": {"id": str(related_id1), "name": "Related 1"},
                 "labels": ["Context"]
@@ -241,9 +229,7 @@ class TestNeo4jRepositoryEnhanced:
                 "labels": ["Context"]
             }
         ]
-        mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_session, mock_result = setup_mock_session(mock_driver, mock_data)
         
         # Execute
         result = await repository.find_related_nodes(

@@ -26,6 +26,7 @@ logs/
 *.temp
 .DS_Store
 Thumbs.db
+*_db
 
 # IDE files
 .vscode/
@@ -58,3 +59,7 @@ grafana_data/
 *.dump.gz
 
 
+pcs/env_db-shm
+pcs/env_db-wal
+pcs/test_db-shm
+pcs/test_db-wal
