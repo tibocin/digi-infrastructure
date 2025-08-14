@@ -548,9 +548,9 @@ async def create_prompt_version(
         new_version = PromptVersion(
             template_id=template_id,
             version_number=next_version,
-            content=version_data.content,
-            variables=version_data.variables,
-            changelog=version_data.changelog,
+            template=version_data.content,        # Map 'content' to 'template'
+            variables=list(version_data.variables.keys()) if version_data.variables else [],  # Convert dict keys to list
+            change_notes=version_data.changelog,  # Map 'changelog' to 'change_notes'
             is_active=make_active
         )
         
@@ -630,7 +630,7 @@ async def generate_prompt(
             template_engine=None,  # Would be injected
             rule_engine=None,      # Would be injected
             context_manager=None,  # Would be injected
-            cache_repository=None  # Would be injected
+            redis_repo=None        # Would be injected
         )
         
         # Convert API request to service request

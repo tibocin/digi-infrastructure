@@ -99,7 +99,7 @@ class PromptTemplate(BaseModel):
     # Relationships
     versions: Mapped[List["PromptVersion"]] = relationship(
         "PromptVersion",
-        back_populates="template",
+        back_populates="template_rel",
         cascade="all, delete-orphan",
         order_by="PromptVersion.version_number.desc()"
     )
@@ -202,7 +202,7 @@ class PromptVersion(BaseModel):
     )
 
     # Relationships
-    template: Mapped[PromptTemplate] = relationship(
+    template_rel: Mapped[PromptTemplate] = relationship(
         "PromptTemplate",
         back_populates="versions"
     )
