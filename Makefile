@@ -15,42 +15,42 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 up: ## Start infrastructure services
-	docker-compose up -d
+	docker compose up -d
 
 down: ## Stop infrastructure services
-	docker-compose down
+	docker compose down
 
 restart: ## Restart infrastructure services
-	docker-compose restart
+	docker compose restart
 
 logs: ## Show logs from all services
-	docker-compose logs -f
+	docker compose logs -f
 
 ps: ## Show running containers
-	docker-compose ps
+	docker compose ps
 
 health: ## Run health checks
 	./scripts/health-check.sh
 
 backup: ## Create backup
-	docker-compose exec backup-sidecar restic backup /backup
+	docker compose exec backup-sidecar restic backup /backup
 
 restore: ## Restore from backup (latest)
-	docker-compose exec backup-sidecar restic restore latest --target /restore
+	docker compose exec backup-sidecar restic restore latest --target /restore
 
 clean: ## Remove all containers and volumes
-	docker-compose down -v
+	docker compose down -v
 	docker system prune -f
 
 init: ## Initialize databases for all apps
-	docker-compose exec postgres psql -U digi -d digi -c "SELECT 1;"
+	docker compose exec postgres psql -U digi -d digi -c "SELECT 1;"
 
 status: ## Show detailed status
 	@echo "=== Container Status ==="
-	@docker-compose ps
+	@docker compose ps
 	@echo ""
 	@echo "=== Database Status ==="
-	@docker-compose exec -T postgres psql -U digi -d digi -c "\l" || echo "PostgreSQL not accessible"
+	@docker compose exec -T postgres psql -U digi -d digi -c "\l" || echo "PostgreSQL not accessible"
 	@echo ""
 	@echo "=== Network Status ==="
 	@docker network ls | grep digi || echo "No digi networks found"
@@ -75,10 +75,10 @@ setup: ## Initial setup and configuration
 	@echo "  - ChromaDB: http://localhost:8001"
 
 dev: ## Start with development overrides
-	docker-compose -f docker-compose.yml -f docker-compose.override.yml up -d
+	docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
 
 prod: ## Start with production configuration
-	docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 test: ## Run infrastructure tests
 	@echo "Testing infrastructure components..."
@@ -86,8 +86,8 @@ test: ## Run infrastructure tests
 	@echo "All tests passed!"
 
 update: ## Update all images to latest versions
-	docker-compose pull
-	docker-compose up -d
+	docker compose pull
+	docker compose up -d
 
 monitor: ## Open monitoring interfaces
 	@echo "Opening monitoring interfaces..."

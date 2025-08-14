@@ -18,6 +18,7 @@ volumes:
   grafana_data:
   backup_cache:
 
+
 services:
   # PostgreSQL with multi-database support
   postgres:
@@ -116,6 +117,49 @@ services:
     networks:
       - digi-net
 
+  # Prompt and Context Service (PCS)
+  pcs:
+    build:
+      context: ./pcs
+      dockerfile: Dockerfile
+    container_name: digi-pcs
+    restart: unless-stopped
+    environment:
+      - PCS_ENVIRONMENT=${PCS_ENVIRONMENT:-production}
+      - PCS_DEBUG=${PCS_DEBUG:-false}
+      - PCS_SECURITY_SECRET_KEY=${PCS_SECURITY_SECRET_KEY:-change_me_to_secure_secret_key}
+      - PCS_SECURITY_JWT_SECRET_KEY=${PCS_SECURITY_JWT_SECRET_KEY:-change_me_to_secure_jwt_secret_key}
+      - PCS_DB_HOST=postgres
+      - PCS_DB_PORT=5432
+      - PCS_DB_USER=pcs_user
+      - PCS_DB_PASSWORD=${PCS_DB_PASSWORD:-pcs_pass}
+      - PCS_DB_NAME=pcs
+      - PCS_REDIS_HOST=redis
+      - PCS_REDIS_PORT=6379
+      - PCS_REDIS_DB=3
+      - PCS_CHROMA_HOST=chroma
+      - PCS_CHROMA_PORT=8000
+      - PCS_NEO4J_URI=bolt://neo4j:7687
+      - PCS_NEO4J_USER=neo4j
+      - PCS_NEO4J_PASSWORD=${NEO4J_PASSWORD:-digi_secure_123}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./pcs/logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+      - chroma
+      - neo4j
+    networks:
+      - digi-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v1/health/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   # Backup Service
   backup-sidecar:
     image: restic/restic:latest
@@ -125,6 +169,7 @@ services:
       - neo4j
       - chroma
       - redis
+      - pcs
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
@@ -136,7 +181,7 @@ services:
       - chroma_data:/backup/chroma_data:ro
       - redis_data:/backup/redis_data:ro
       - backup_cache:/root/.cache/restic
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: [ "/bin/sh", "-c" ]
     command: |
       "echo '0 3 * * * restic backup /backup && restic forget --prune --keep-daily 7 --keep-weekly 4 --keep-monthly 6' > /etc/crontabs/root && crond -f -d 8"
     networks:

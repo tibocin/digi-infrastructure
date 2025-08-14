@@ -144,20 +144,15 @@ class TestNeo4jRepositoryEnhanced:
     async def test_get_node_by_id_enhanced(self, repository, mock_driver):
         """Test enhanced node retrieval with label information."""
         # Setup
-        mock_session = AsyncMock()
-        mock_result = AsyncMock()
-        
         node_id = uuid4()
-        mock_result.data.return_value = [{
+        mock_data = [{
             "n": {
                 "id": str(node_id),
                 "name": "Test Node"
             },
             "labels": ["TestLabel"]
         }]
-        mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_session, mock_result = setup_mock_session(mock_driver, mock_data)
         
         # Execute
         result = await repository.get_node_by_id(node_id)
