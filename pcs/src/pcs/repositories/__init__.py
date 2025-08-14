@@ -7,16 +7,40 @@ Tags: repository-pattern, data-access, database-abstraction
 
 from .base import AbstractRepository, BaseRepository, RepositoryError
 from .postgres_repo import PostgreSQLRepository
-from .redis_repo import RedisRepository
-from .neo4j_repo import Neo4jRepository
-from .chroma_repo import ChromaRepository
+
+# Optional imports for repositories that require external dependencies
+try:
+    from .redis_repo import RedisRepository
+    _has_redis = True
+except ImportError:
+    RedisRepository = None
+    _has_redis = False
+
+try:
+    from .neo4j_repo import Neo4jRepository
+    _has_neo4j = True
+except ImportError:
+    Neo4jRepository = None
+    _has_neo4j = False
+
+try:
+    from .chroma_repo import ChromaRepository
+    _has_chroma = True
+except ImportError:
+    ChromaRepository = None
+    _has_chroma = False
 
 __all__ = [
     "AbstractRepository",
     "BaseRepository", 
     "RepositoryError",
     "PostgreSQLRepository",
-    "RedisRepository",
-    "Neo4jRepository",
-    "ChromaRepository",
 ]
+
+# Add optional exports only if available
+if _has_redis:
+    __all__.append("RedisRepository")
+if _has_neo4j:
+    __all__.append("Neo4jRepository")
+if _has_chroma:
+    __all__.append("ChromaRepository")

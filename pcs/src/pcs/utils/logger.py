@@ -10,10 +10,34 @@ import sys
 from typing import Any, Dict, Optional
 from datetime import datetime, timezone
 import json
-import structlog
-from structlog.stdlib import LoggerFactory
-from structlog.processors import JSONRenderer, TimeStamper, add_log_level
-from structlog.types import Processor
+
+# Optional import for testing environments
+try:
+    import structlog
+    from structlog.stdlib import LoggerFactory
+    from structlog.processors import JSONRenderer, TimeStamper, add_log_level
+    from structlog.types import Processor
+    HAS_STRUCTLOG = True
+except ImportError:
+    HAS_STRUCTLOG = False
+    # Create mock objects for when structlog is not available
+    class MockProcessor:
+        pass
+    
+    class MockLogger:
+        def info(self, msg, **kwargs):
+            print(f"INFO: {msg} {kwargs}")
+        
+        def error(self, msg, **kwargs):
+            print(f"ERROR: {msg} {kwargs}")
+        
+        def warning(self, msg, **kwargs):
+            print(f"WARNING: {msg} {kwargs}")
+        
+        def debug(self, msg, **kwargs):
+            print(f"DEBUG: {msg} {kwargs}")
+    
+    Processor = MockProcessor
 
 
 def setup_logging(
@@ -33,9 +57,17 @@ def setup_logging(
     
     Side Effects:
         - Configures global logging configuration
-        - Sets up structlog processors
+        - Sets up structlog processors (if available)
         - Configures console and JSON output
     """
+    
+    if not HAS_STRUCTLOG:
+        # Fallback to basic logging when structlog is not available
+        stdlib_logging.basicConfig(
+            level=getattr(stdlib_logging, level.upper(), stdlib_logging.INFO),
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        return
     
     # Configure structlog processors
     processors: list[Processor] = [
@@ -85,7 +117,7 @@ def setup_logging(
     )
 
 
-def get_logger(name: str) -> structlog.stdlib.BoundLogger:
+def get_logger(name: str):
     """
     Get a structured logger instance.
     
@@ -93,13 +125,17 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
         name: Logger name (usually __name__)
     
     Returns:
-        Configured structlog logger instance
+        Configured structlog logger instance or fallback logger
     
     Example:
         logger = get_logger(__name__)
         logger.info("Operation completed", user_id=123, duration=0.5)
     """
-    return structlog.get_logger(name)
+    if HAS_STRUCTLOG:
+        return structlog.get_logger(name)
+    else:
+        # Return a basic logger that matches the expected interface
+        return stdlib_logging.getLogger(name)
 
 
 class LoggerAdapter:

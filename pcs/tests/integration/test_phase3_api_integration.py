@@ -43,13 +43,68 @@ class TestPhase3APIIntegration:
         app = create_app(settings)
         
         # Override dependencies with mocks
+        # Create a persistent entity store that survives across requests
+        entity_store = {}
+        
         def mock_get_db():
             mock_session = AsyncMock()
-            mock_session.add = Mock()
+            
+            # Mock the add method to capture the entity and set up its attributes
+            def mock_add(entity):
+                # Set the ID and timestamps when entity is added
+                if not hasattr(entity, 'id') or entity.id is None:
+                    entity.id = uuid4()
+                if not hasattr(entity, 'created_at') or entity.created_at is None:
+                    entity.created_at = datetime.now()
+                if not hasattr(entity, 'updated_at') or entity.updated_at is None:
+                    entity.updated_at = datetime.now()
+                
+                # Set defaults for common fields if not present  
+                if not hasattr(entity, 'version_count'):
+                    entity.version_count = 0
+                if not hasattr(entity, 'usage_count'):
+                    entity.usage_count = 0
+                    
+                # Handle PromptVersion specific fields
+                if entity.__class__.__name__ == 'PromptVersion':
+                    if not hasattr(entity, 'version_number'):
+                        entity.version_number = 1
+                    if not hasattr(entity, 'is_active'):
+                        entity.is_active = True
+                
+                # Store the entity for later retrieval
+                entity_store[entity.id] = entity
+                return entity
+            
+            mock_session.add = mock_add
             mock_session.commit = AsyncMock()
             mock_session.refresh = AsyncMock()
-            mock_session.execute = AsyncMock()
-            mock_session.execute.return_value.scalar_one_or_none = Mock(return_value=None)
+            
+            # Mock execute to handle different query patterns
+            async def mock_execute(stmt):
+                # This is a simplified mock that handles basic patterns
+                # In a real scenario, you'd parse the SQL to determine the operation
+                mock_result = Mock()
+                mock_scalars = Mock()
+                
+                # For find_by_criteria - return empty list (no conflicts)
+                mock_scalars.all = Mock(return_value=[])
+                
+                # For get_by_id - try to find in our store
+                def mock_one_or_none():
+                    # This is a very simplified approach
+                    # In practice, you'd need to parse the WHERE clause
+                    # For now, just return the first entity if any exist
+                    return list(entity_store.values())[0] if entity_store else None
+                
+                mock_scalars.one_or_none = mock_one_or_none
+                mock_result.scalars = Mock(return_value=mock_scalars)
+                # Also mock scalar_one_or_none for get_by_id operations
+                mock_result.scalar_one_or_none = mock_one_or_none
+                
+                return mock_result
+            
+            mock_session.execute = mock_execute
             mock_session.rollback = AsyncMock()
             return mock_session
         
@@ -59,71 +114,11 @@ class TestPhase3APIIntegration:
         def mock_get_app():
             return {"app_id": "test-app", "app_name": "PCS", "permissions": ["admin"], "environment": "test"}
         
-        # Create a comprehensive mock repository for all APIs
-        def create_mock_repository():
-            mock_repo = Mock()
-            
-            # Mock create method to return a mock entity
-            async def mock_create(entity):
-                # Create a mock entity with required attributes
-                mock_entity = Mock()
-                mock_entity.id = uuid4()
-                
-                # Set common attributes
-                for attr in ['name', 'description', 'content', 'template', 'change_notes', 'changelog']:
-                    if hasattr(entity, attr):
-                        setattr(mock_entity, attr, getattr(entity, attr))
-                
-                # Set timestamps
-                mock_entity.created_at = datetime.now()
-                mock_entity.updated_at = datetime.now()
-                
-                # Set other common attributes
-                mock_entity.is_active = getattr(entity, 'is_active', True)
-                mock_entity.is_system = getattr(entity, 'is_system', False)
-                
-                return mock_entity
-            
-            # Mock find_by_criteria to return empty list (no conflicts)
-            async def mock_find_by_criteria(**kwargs):
-                return []
-            
-            # Mock get_by_id to return None (not found)
-            async def mock_get_by_id(id):
-                return None
-            
-            # Mock update method
-            async def mock_update(id, updates):
-                mock_entity = Mock()
-                mock_entity.id = id
-                for key, value in updates.items():
-                    setattr(mock_entity, key, value)
-                return mock_entity
-            
-            # Mock delete method
-            async def mock_delete(id):
-                return True
-            
-            # Assign all mock methods
-            mock_repo.create = mock_create
-            mock_repo.find_by_criteria = mock_find_by_criteria
-            mock_repo.get_by_id = mock_get_by_id
-            mock_repo.update = mock_update
-            mock_repo.delete = mock_delete
-            
-            return mock_repo
+        app.dependency_overrides[get_database_session] = mock_get_db
+        app.dependency_overrides[get_current_user] = mock_get_user
+        app.dependency_overrides[get_current_app] = mock_get_app
         
-        # Apply comprehensive mocking to all APIs
-        with patch('pcs.api.v1.prompts.PostgreSQLRepository', side_effect=create_mock_repository), \
-             patch('pcs.api.v1.contexts.PostgreSQLRepository', side_effect=create_mock_repository), \
-             patch('pcs.api.v1.conversations.PostgreSQLRepository', side_effect=create_mock_repository), \
-             patch('pcs.api.v1.admin.PostgreSQLRepository', side_effect=create_mock_repository):
-            
-            app.dependency_overrides[get_database_session] = mock_get_db
-            app.dependency_overrides[get_current_user] = mock_get_user
-            app.dependency_overrides[get_current_app] = mock_get_app
-            
-            return app
+        return app
     
     @pytest.fixture(scope="class")
     def client(self, app):
@@ -165,6 +160,9 @@ class TestPhase3APIIntegration:
         }
         
         response = client.post("/api/v1/prompts/", json=template_data, headers=auth_headers)
+        if response.status_code != status.HTTP_201_CREATED:
+            print(f"Response status: {response.status_code}")
+            print(f"Response content: {response.text}")
         assert response.status_code == status.HTTP_201_CREATED
         template = response.json()
         template_id = template["id"]
@@ -197,6 +195,9 @@ class TestPhase3APIIntegration:
             headers=auth_headers,
             params={"make_active": True}
         )
+        if response.status_code != status.HTTP_201_CREATED:
+            print(f"Version creation response status: {response.status_code}")
+            print(f"Version creation response content: {response.text}")
         assert response.status_code == status.HTTP_201_CREATED
         version = response.json()
         

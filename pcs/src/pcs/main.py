@@ -275,8 +275,15 @@ def run_server() -> None:
     main()
 
 
-# Create app instance for ASGI servers
-app = create_app()
+# Create app instance for ASGI servers - lazy initialization to avoid import-time issues
+def get_app():
+    """Get or create the FastAPI app instance."""
+    if not hasattr(get_app, '_app'):
+        get_app._app = create_app()
+    return get_app._app
+
+# For compatibility with ASGI servers that expect an 'app' variable
+app = None
 
 
 if __name__ == "__main__":

@@ -23,15 +23,21 @@ import cProfile
 import pstats
 import io
 
-import structlog
+from ..utils.logger import get_logger
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.exceptions import PCSError
 from ..utils.metrics import get_metrics_collector, PerformanceMonitor
-from .monitoring_service import get_monitoring_service
+# Optional import for monitoring service
+try:
+    from .monitoring_service import get_monitoring_service
+    HAS_MONITORING = True
+except ImportError:
+    HAS_MONITORING = False
+    get_monitoring_service = lambda: None
 
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class OptimizationType(str, Enum):
