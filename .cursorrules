@@ -1,0 +1,69 @@
+# Cursor Rules for Digi Infrastructure Project
+
+## CRITICAL: Use UV Package Manager
+
+**IMPORTANT:** This project uses `uv` as the package manager. NEVER use `pip`, `poetry`, or other package managers.
+
+### Development Setup
+1. **Install uv**: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+2. **Activate environment**: `source .venv/bin/activate` or `uv shell`
+3. **Install dependencies**: `uv sync`
+4. **Run tests**: `uv run pytest`
+5. **Run commands**: Always prefix with `uv run` or use `uv shell`
+
+### Why UV?
+- **Speed**: 10-100x faster than pip/poetry
+- **Reliability**: Deterministic dependency resolution
+- **Modern**: Built for Python 3.8+ with async support
+- **Project Standard**: This project is configured for uv
+
+### Common Commands
+```bash
+# Install dependencies
+uv sync
+
+# Run tests
+uv run pytest
+
+# Run specific test
+uv run pytest pcs/tests/integration/test_phase3_api_integration.py::test_complete_context_workflow -v -s
+
+# Run with coverage
+uv run pytest --cov=pcs
+
+# Install new package
+uv add package_name
+
+# Run development server
+uv run uvicorn pcs.main:app --reload
+```
+
+### File Structure
+- `pyproject.toml`: Project configuration and dependencies
+- `.venv/`: Virtual environment (created by uv)
+- `pcs/`: Main source code
+- `tests/`: Test files
+
+### Testing Guidelines
+- Always run tests with `uv run pytest`
+- Use `-v -s` flags for verbose output and print statements
+- Run integration tests separately: `uv run pytest pcs/tests/integration/`
+- Run unit tests: `uv run pytest pcs/tests/unit/`
+
+### Code Quality
+- Use `uv run black` for code formatting
+- Use `uv run isort` for import sorting
+- Use `uv run flake8` for linting
+- Use `uv run mypy` for type checking
+
+### Never Use
+- ❌ `pip install`
+- ❌ `poetry install`
+- ❌ `python -m pip`
+- ❌ Direct `python` commands without `uv run`
+
+### Environment Management
+- Always activate the uv environment: `source .venv/bin/activate`
+- Or use `uv shell` for automatic activation
+- Check environment: `uv env info`
+- Clean environment: `uv env remove && uv sync`

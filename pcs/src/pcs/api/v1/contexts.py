@@ -804,7 +804,7 @@ async def merge_contexts(
                 context_type_id=source_contexts[0].context_type_id,
                 name=f"Merged Context {datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
                 description="Merged from multiple contexts",
-                scope=min(ctx.scope for ctx in source_contexts),  # Most restrictive scope
+                scope=get_most_restrictive_scope([ctx.scope for ctx in source_contexts]),  # Most restrictive scope
                 owner_id=current_user.get('id'),
                 project_id=source_contexts[0].project_id,
                 context_data=merged_data,
@@ -863,6 +863,22 @@ async def merge_contexts(
 
 
 # Context Search Endpoint
+
+# Helper function for scope ordering (most restrictive to least restrictive)
+def get_most_restrictive_scope(scopes: List[ContextScope]) -> ContextScope:
+    """Get the most restrictive scope from a list of scopes."""
+    # Define scope hierarchy: PRIVATE > USER > SESSION > PROJECT > GLOBAL
+    scope_hierarchy = {
+        ContextScope.PRIVATE: 5,
+        ContextScope.USER: 4,
+        ContextScope.SESSION: 3,
+        ContextScope.PROJECT: 2,
+        ContextScope.GLOBAL: 1
+    }
+    
+    # Find the scope with the highest hierarchy value (most restrictive)
+    most_restrictive = max(scopes, key=lambda s: scope_hierarchy.get(s, 0))
+    return most_restrictive
 
 @router.post("/search", response_model=PaginatedContextsResponse)
 async def search_contexts(

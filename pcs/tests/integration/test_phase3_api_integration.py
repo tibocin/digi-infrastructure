@@ -22,6 +22,7 @@ from pcs.core.config import get_settings
 from pcs.models.prompts import PromptStatus
 from pcs.models.contexts import ContextScope
 from pcs.models.conversations import ConversationStatus, MessageRole
+from pcs.models.contexts import ContextTypeEnum
 
 
 class TestPhase3APIIntegration:
@@ -320,9 +321,19 @@ class TestPhase3APIIntegration:
                 
             else:  # Context
                 # Set common attributes
-                for attr in ['name', 'description', 'scope', 'priority', 'context_data']:
+                for attr in ['name', 'description', 'priority', 'context_data']:
                     if hasattr(entity, attr):
                         setattr(mock_entity, attr, getattr(entity, attr))
+                
+                # Handle scope separately to ensure proper enum usage
+                if hasattr(entity, 'scope'):
+                    # Convert string to enum if needed, or use as-is if already enum
+                    if isinstance(entity.scope, str):
+                        mock_entity.scope = ContextScope(entity.scope)
+                    else:
+                        mock_entity.scope = entity.scope
+                else:
+                    mock_entity.scope = ContextScope.USER
                 
                 # Set timestamps
                 mock_entity.created_at = datetime.now()
@@ -342,7 +353,7 @@ class TestPhase3APIIntegration:
                 mock_entity.metadata = getattr(entity, 'context_metadata', {})
                 
                 # Set scope as proper enum value
-                mock_entity.scope = "user"  # This should match ContextScope.USER
+                mock_entity.scope = ContextScope.USER  # Use actual enum instead of string
                 
                 # Set the context_data attribute that the search endpoint expects
                 mock_entity.context_data = getattr(entity, 'context_data', {})
@@ -352,10 +363,10 @@ class TestPhase3APIIntegration:
                 mock_context_type.id = mock_entity.context_type_id
                 mock_context_type.name = "Test Context Type"
                 mock_context_type.description = "Test Description"
-                mock_context_type.type_enum = "custom"
+                mock_context_type.type_enum = ContextTypeEnum.CUSTOM  # Use actual enum
                 mock_context_type.schema_definition = {}
                 mock_context_type.validation_rules = {}
-                mock_context_type.default_scope = "user"  # This should match ContextScope.USER
+                mock_context_type.default_scope = ContextScope.USER  # Use actual enum
                 mock_context_type.max_instances = 100
                 mock_context_type.is_system = False
                 mock_context_type.is_active = True
@@ -376,18 +387,10 @@ class TestPhase3APIIntegration:
         
         # Mock find_by_criteria to return contexts when searching
         async def mock_find_by_criteria(**kwargs):
-            print(f"DEBUG: mock_find_by_criteria called with kwargs: {kwargs}")
-            print(f"DEBUG: context_entities available: {hasattr(mock_get_by_id, 'context_entities')}")
-            print(f"DEBUG: context_entities count: {len(mock_get_by_id.context_entities) if hasattr(mock_get_by_id, 'context_entities') else 0}")
-            
             # If this is a search request (no arguments), return the contexts we created
             if not kwargs and hasattr(mock_get_by_id, 'context_entities') and mock_get_by_id.context_entities:
-                print(f"DEBUG: Returning {len(mock_get_by_id.context_entities)} contexts for search")
-                for i, ctx in enumerate(mock_get_by_id.context_entities):
-                    print(f"DEBUG: Context {i}: id={ctx.id}, name={ctx.name}, scope={ctx.scope}, is_active={ctx.is_active}")
                 return mock_get_by_id.context_entities
             # For other calls (like checking for conflicts), return empty list
-            print(f"DEBUG: Returning empty list")
             return []
         
         # Mock get_by_id to return the context type when ID matches
@@ -458,10 +461,6 @@ class TestPhase3APIIntegration:
         
         response = client.post("/api/v1/contexts/types", json=context_type_data, headers=auth_headers)
         
-        # Debug: Print response details for context type creation
-        print(f"Context type creation response status: {response.status_code}")
-        print(f"Context type creation response content: {response.text}")
-        
         assert response.status_code == status.HTTP_201_CREATED
         context_type = response.json()
         context_type_id = context_type["id"]
@@ -481,10 +480,6 @@ class TestPhase3APIIntegration:
         }
         
         response = client.post("/api/v1/contexts/", json=context1_data, headers=auth_headers)
-        
-        # Debug: Print response details for context creation
-        print(f"Context creation response status: {response.status_code}")
-        print(f"Context creation response content: {response.text}")
         
         assert response.status_code == status.HTTP_201_CREATED
         context1 = response.json()
@@ -519,10 +514,6 @@ class TestPhase3APIIntegration:
         
         response = client.post("/api/v1/contexts/merge", json=merge_data, headers=auth_headers)
         
-        # Debug: Print response details for context merge
-        print(f"Context merge response status: {response.status_code}")
-        print(f"Context merge response content: {response.text}")
-        
         assert response.status_code == status.HTTP_200_OK
         merge_result = response.json()
         
@@ -544,16 +535,12 @@ class TestPhase3APIIntegration:
         
         # Step 6: Search contexts
         search_data = {
-            "query": "integration-test",
+            "query": "context",  # Use "context" to find all contexts including merged one
             "scopes": ["user"],
             "include_inactive": False
         }
         
         response = client.post("/api/v1/contexts/search", json=search_data, headers=auth_headers)
-        
-        # Debug: Print response details for context search
-        print(f"Context search response status: {response.status_code}")
-        print(f"Context search response content: {response.text}")
         
         assert response.status_code == status.HTTP_200_OK
         search_results = response.json()
