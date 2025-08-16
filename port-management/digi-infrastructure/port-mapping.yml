@@ -1,0 +1,265 @@
+# -----------------------------------------------------------------------------
+# File: digi-infrastructure/port-mapping.yml
+# Purpose: Centralized port management for all digi ecosystem services
+# Related: docker-compose files, service configurations
+# Tags: port-management, infrastructure, docker, services
+# -----------------------------------------------------------------------------
+
+# Port Allocation Strategy:
+# - 1000-1999: Foundation infrastructure (databases, standard ports)
+# - 2000-2999: Core platform services (digi-core, PCS, platform APIs)
+# - 3000-3999: User-facing applications (LernMI, Beep-Boop, etc.)
+# - 4000-4999: Monitoring and observability (Grafana, Prometheus, etc.)
+# - 5000-5999: Development and testing services
+# - 6000-6999: Backup and maintenance services
+# - 7000-7999: Reserved for high-priority services
+# - 8000-8999: Legacy/compatibility ports (backward compatibility)
+
+# Core Infrastructure Services (1000-1999)
+infrastructure:
+  postgres:
+    external: 5432
+    internal: 5432
+    service: postgres
+    description: "Primary PostgreSQL database"
+    
+  postgres_test:
+    external: 5433
+    internal: 5432
+    service: postgres-test
+    description: "Test PostgreSQL database"
+    
+  neo4j:
+    external: 7474
+    internal: 7474
+    service: neo4j
+    description: "Neo4j browser interface"
+    
+  neo4j_bolt:
+    external: 7687
+    internal: 7687
+    service: neo4j
+    description: "Neo4j bolt protocol"
+    
+  redis:
+    external: 6379
+    internal: 6379
+    service: redis
+    description: "Redis cache and session store"
+    
+  # ChromaDB moved to platform services (port 2003)
+  # chroma:
+  #   external: 8001
+  #   internal: 8000
+  #   service: chroma
+  #   description: "ChromaDB vector database"
+
+# Core Platform Services (2000-2999)
+applications:
+  digi_core:
+    external: 2000
+    internal: 8000
+    service: digi-core-app
+    description: "Digi-core main application (core platform)"
+    status: "active"
+    
+  pcs_api:
+    external: 2001
+    internal: 8000
+    service: pcs-api
+    description: "PCS API service (core platform)"
+    status: "planned"
+    
+  pcs_web:
+    external: 2002
+    internal: 3000
+    service: pcs-web
+    description: "PCS web interface (platform UI)"
+    status: "planned"
+    
+  chroma_platform:
+    external: 2003
+    internal: 8000
+    service: chroma
+    description: "ChromaDB vector database (platform infrastructure)"
+    status: "active"
+    
+  platform_health:
+    external: 2004
+    internal: 8000
+    service: health-check
+    description: "Platform health check service"
+    status: "planned"
+
+# User-Facing Applications (3000-3999)
+user_applications:
+  lernmi:
+    external: 3000
+    internal: 8000
+    service: lernmi-app
+    description: "LernMI learning application"
+    status: "planned"
+    
+  beep_boop:
+    external: 3001
+    internal: 8000
+    service: beep-boop-app
+    description: "Beep-Boop automation application"
+    status: "planned"
+    
+  other_app_1:
+    external: 3002
+    internal: 8000
+    service: other-app-1
+    description: "Additional application 1"
+    status: "planned"
+    
+  other_app_2:
+    external: 3003
+    internal: 8000
+    service: other-app-2
+    description: "Additional application 2"
+    status: "planned"
+
+# Monitoring and Observability (4000-4999)
+monitoring:
+  grafana:
+    external: 4000
+    internal: 3000
+    service: grafana
+    description: "Grafana dashboards"
+    
+  prometheus:
+    external: 4001
+    internal: 9090
+    service: prometheus
+    description: "Prometheus metrics"
+    
+  jaeger:
+    external: 16686
+    internal: 16686
+    service: jaeger
+    description: "Jaeger tracing UI"
+    status: "planned"
+    
+  zipkin:
+    external: 9411
+    internal: 9411
+    service: zipkin
+    description: "Zipkin tracing"
+    status: "planned"
+
+# Development and Testing (5000-5999)
+development:
+  test_runner:
+    external: 5000
+    internal: 5000
+    service: test-runner
+    description: "Test execution service"
+    status: "planned"
+    
+  mock_services:
+    external: 5001
+    internal: 5001
+    service: mock-services
+    description: "Mock external services"
+    status: "planned"
+
+# Backup and Maintenance (6000-6999)
+maintenance:
+  backup_sidecar:
+    external: 6000
+    internal: 6000
+    service: backup-sidecar
+    description: "Backup service"
+    
+  maintenance_ui:
+    external: 6001
+    internal: 6001
+    service: maintenance-ui
+    description: "Maintenance interface"
+    status: "planned"
+
+# High Priority Services (7000-7999)
+high_priority:
+  health_check:
+    external: 7000
+    internal: 7000
+    service: health-check
+    description: "Health check service"
+    status: "planned"
+    
+  load_balancer:
+    external: 7001
+    internal: 7001
+    service: load-balancer
+    description: "Load balancer"
+    status: "planned"
+
+# Legacy/Compatibility Ports (8000-8999)
+legacy_ports:
+  digi_pcs_legacy:
+    external: 8000
+    internal: 8000
+    service: digi-pcs
+    description: "PCS legacy port (temporary compatibility)"
+    status: "active"
+    migration_plan: "Move to platform port 2001 when ready"
+    
+  pcs_portal_legacy:
+    external: 8002
+    internal: 8000
+    service: pcs-portal
+    description: "PCS portal legacy port"
+    status: "planned"
+    migration_plan: "Move to platform port 2002 when ready"
+
+# Port Conflict Resolution
+conflict_resolution:
+  digi_core_app:
+    original_port: 8000
+    resolved_port: 2000
+    conflict_with: "digi-pcs_container"
+    resolution: "digi_core_moves_to_2000_pcs_keeps_8000_temporarily"
+    notes: "Digi-core moved to platform port 2000, PCS temporarily keeps 8000 for compatibility"
+    
+  port_2000:
+    status: "allocated"
+    service: "digi-core-app"
+    priority: "high"
+    description: "Core platform port for digi-core"
+    
+  port_8000:
+    status: "legacy"
+    service: "digi-pcs"
+    priority: "medium"
+    description: "Legacy PCS port (temporary compatibility)"
+
+# Service Dependencies
+dependencies:
+  postgres:
+    required_by: ["digi-core", "pcs", "lernmi", "beep-boop"]
+    health_check: "5432"
+    
+  neo4j:
+    required_by: ["digi-core", "pcs"]
+    health_check: "7474"
+    
+  redis:
+    required_by: ["digi-core", "pcs", "lernmi"]
+    health_check: "6379"
+    
+  chroma:
+    required_by: ["digi-core", "pcs"]
+    health_check: "8001"
+
+# Health Check Endpoints
+health_checks:
+  postgres: "http://localhost:5432/health"
+  neo4j: "http://localhost:7474/browser/"
+  redis: "redis://localhost:6379/ping"
+  chroma: "http://localhost:2003/api/v1/heartbeat"
+  digi_core: "http://localhost:2000/health"
+  grafana: "http://localhost:4000/api/health"
+  prometheus: "http://localhost:4001/-/healthy"
+  pcs_legacy: "http://localhost:8000/health"
