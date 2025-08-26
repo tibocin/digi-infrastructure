@@ -55,24 +55,28 @@ Bitscrow acts as an intelligent intermediary for Bitcoin-based transactions, ena
 ### Supported Transaction Types
 
 #### 1. **Escrow Transactions**
+
 - 2-of-3 multi-signature contracts
 - Time-locked releases
 - Condition-based releases
 - Partial payments and milestones
 
 #### 2. **Lightning Network Channels**
+
 - Instant micropayments
 - Streaming payments
 - Conditional payments
 - Channel management
 
 #### 3. **Smart Contracts**
+
 - Hash Time Locked Contracts (HTLCs)
 - Discrete Log Contracts (DLCs)
 - Taproot-based contracts
 - Covenant transactions
 
 #### 4. **Oracle Contracts**
+
 - Price-based settlements
 - Event-based releases
 - External data validation
@@ -431,28 +435,28 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_parties_updated_at 
-    BEFORE UPDATE ON bitscrow.parties 
+CREATE TRIGGER update_parties_updated_at
+    BEFORE UPDATE ON bitscrow.parties
     FOR EACH ROW EXECUTE FUNCTION bitscrow.update_updated_at_column();
 
-CREATE TRIGGER update_contracts_updated_at 
-    BEFORE UPDATE ON bitscrow.contracts 
+CREATE TRIGGER update_contracts_updated_at
+    BEFORE UPDATE ON bitscrow.contracts
     FOR EACH ROW EXECUTE FUNCTION bitscrow.update_updated_at_column();
 
-CREATE TRIGGER update_disputes_updated_at 
-    BEFORE UPDATE ON bitscrow.disputes 
+CREATE TRIGGER update_disputes_updated_at
+    BEFORE UPDATE ON bitscrow.disputes
     FOR EACH ROW EXECUTE FUNCTION bitscrow.update_updated_at_column();
 
-CREATE TRIGGER update_contract_templates_updated_at 
-    BEFORE UPDATE ON bitscrow.contract_templates 
+CREATE TRIGGER update_contract_templates_updated_at
+    BEFORE UPDATE ON bitscrow.contract_templates
     FOR EACH ROW EXECUTE FUNCTION bitscrow.update_updated_at_column();
 
 -- Function to update party last_active_at
 CREATE OR REPLACE FUNCTION bitscrow.update_party_activity()
 RETURNS TRIGGER AS $$
 BEGIN
-    UPDATE bitscrow.parties 
-    SET last_active_at = NOW() 
+    UPDATE bitscrow.parties
+    SET last_active_at = NOW()
     WHERE id = NEW.from_party_id OR id = NEW.to_party_id;
     RETURN NEW;
 END;
@@ -469,10 +473,10 @@ CREATE TRIGGER update_party_activity_on_negotiation
 
 ```typescript
 // src/contracts/contract-builder.ts
-import { PCSClient } from '@pcs/typescript-sdk';
-import * as bitcoin from 'bitcoinjs-lib';
-import { ECPairFactory } from 'ecpair';
-import * as ecc from 'tiny-secp256k1';
+import { PCSClient } from "@pcs/typescript-sdk";
+import * as bitcoin from "bitcoinjs-lib";
+import { ECPairFactory } from "ecpair";
+import * as ecc from "tiny-secp256k1";
 
 const ECPair = ECPairFactory(ecc);
 
@@ -482,18 +486,19 @@ export class ContractBuilder {
 
   constructor(config: {
     pcsConfig: any;
-    bitcoinNetwork: 'mainnet' | 'testnet';
+    bitcoinNetwork: "mainnet" | "testnet";
   }) {
     this.pcs = new PCSClient(config.pcsConfig);
-    this.network = config.bitcoinNetwork === 'mainnet' 
-      ? bitcoin.networks.bitcoin 
-      : bitcoin.networks.testnet;
+    this.network =
+      config.bitcoinNetwork === "mainnet"
+        ? bitcoin.networks.bitcoin
+        : bitcoin.networks.testnet;
   }
 
   async createEscrowContract(params: {
-    partyA: { id: string; publicKey: string; };
-    partyB: { id: string; publicKey: string; };
-    mediator: { id: string; publicKey: string; };
+    partyA: { id: string; publicKey: string };
+    partyB: { id: string; publicKey: string };
+    mediator: { id: string; publicKey: string };
     amount: number; // in BTC
     conditions: any;
     timelock?: number; // blocks
@@ -503,41 +508,44 @@ export class ContractBuilder {
     contractId: string;
   }> {
     // Generate contract using AI
-    const contractTerms = await this.pcs.generatePrompt('bitscrow_contract_generation', {
-      context: {
-        party_a: JSON.stringify(params.partyA),
-        party_b: JSON.stringify(params.partyB),
-        mediator: JSON.stringify(params.mediator),
-        amount_btc: params.amount.toString(),
-        conditions: JSON.stringify(params.conditions),
-        timelock_blocks: params.timelock?.toString() || '0'
+    const contractTerms = await this.pcs.generatePrompt(
+      "bitscrow_contract_generation",
+      {
+        context: {
+          party_a: JSON.stringify(params.partyA),
+          party_b: JSON.stringify(params.partyB),
+          mediator: JSON.stringify(params.mediator),
+          amount_btc: params.amount.toString(),
+          conditions: JSON.stringify(params.conditions),
+          timelock_blocks: params.timelock?.toString() || "0",
+        },
       }
-    });
+    );
 
     // Create 2-of-3 multisig script
     const pubkeys = [
-      Buffer.from(params.partyA.publicKey, 'hex'),
-      Buffer.from(params.partyB.publicKey, 'hex'),
-      Buffer.from(params.mediator.publicKey, 'hex')
+      Buffer.from(params.partyA.publicKey, "hex"),
+      Buffer.from(params.partyB.publicKey, "hex"),
+      Buffer.from(params.mediator.publicKey, "hex"),
     ].sort(); // Sort for deterministic script
 
     const redeemScript = bitcoin.script.compile([
       bitcoin.opcodes.OP_2,
       ...pubkeys,
       bitcoin.opcodes.OP_3,
-      bitcoin.opcodes.OP_CHECKMULTISIG
+      bitcoin.opcodes.OP_CHECKMULTISIG,
     ]);
 
     // Generate P2SH address
     const { address } = bitcoin.payments.p2sh({
       redeem: { output: redeemScript },
-      network: this.network
+      network: this.network,
     });
 
     return {
       redeemScript,
       address: address!,
-      contractId: this.generateContractId(redeemScript)
+      contractId: this.generateContractId(redeemScript),
     };
   }
 
@@ -550,7 +558,7 @@ export class ContractBuilder {
     redeemScript: Buffer;
     address: string;
   }> {
-    const beneficiaryPubkey = Buffer.from(params.beneficiary, 'hex');
+    const beneficiaryPubkey = Buffer.from(params.beneficiary, "hex");
     const lockTime = bitcoin.script.number.encode(params.unlockTime);
 
     // Create timelock script: <locktime> OP_CHECKLOCKTIMEVERIFY OP_DROP <pubkey> OP_CHECKSIG
@@ -559,17 +567,17 @@ export class ContractBuilder {
       bitcoin.opcodes.OP_CHECKLOCKTIMEVERIFY,
       bitcoin.opcodes.OP_DROP,
       beneficiaryPubkey,
-      bitcoin.opcodes.OP_CHECKSIG
+      bitcoin.opcodes.OP_CHECKSIG,
     ]);
 
     const { address } = bitcoin.payments.p2sh({
       redeem: { output: redeemScript },
-      network: this.network
+      network: this.network,
     });
 
     return {
       redeemScript,
-      address: address!
+      address: address!,
     };
   }
 
@@ -582,40 +590,40 @@ export class ContractBuilder {
     redeemScript: Buffer;
     address: string;
   }> {
-    const senderPubkey = Buffer.from(params.senderPubkey, 'hex');
-    const receiverPubkey = Buffer.from(params.receiverPubkey, 'hex');
-    const hashlock = Buffer.from(params.hashlock, 'hex');
+    const senderPubkey = Buffer.from(params.senderPubkey, "hex");
+    const receiverPubkey = Buffer.from(params.receiverPubkey, "hex");
+    const hashlock = Buffer.from(params.hashlock, "hex");
 
     // HTLC script
     const redeemScript = bitcoin.script.compile([
       bitcoin.opcodes.OP_IF,
-        bitcoin.opcodes.OP_SHA256,
-        hashlock,
-        bitcoin.opcodes.OP_EQUALVERIFY,
-        receiverPubkey,
+      bitcoin.opcodes.OP_SHA256,
+      hashlock,
+      bitcoin.opcodes.OP_EQUALVERIFY,
+      receiverPubkey,
       bitcoin.opcodes.OP_ELSE,
-        bitcoin.script.number.encode(params.timelock),
-        bitcoin.opcodes.OP_CHECKLOCKTIMEVERIFY,
-        bitcoin.opcodes.OP_DROP,
-        senderPubkey,
+      bitcoin.script.number.encode(params.timelock),
+      bitcoin.opcodes.OP_CHECKLOCKTIMEVERIFY,
+      bitcoin.opcodes.OP_DROP,
+      senderPubkey,
       bitcoin.opcodes.OP_ENDIF,
-      bitcoin.opcodes.OP_CHECKSIG
+      bitcoin.opcodes.OP_CHECKSIG,
     ]);
 
     const { address } = bitcoin.payments.p2sh({
       redeem: { output: redeemScript },
-      network: this.network
+      network: this.network,
     });
 
     return {
       redeemScript,
-      address: address!
+      address: address!,
     };
   }
 
   private generateContractId(redeemScript: Buffer): string {
-    const crypto = require('crypto');
-    return crypto.createHash('sha256').update(redeemScript).digest('hex');
+    const crypto = require("crypto");
+    return crypto.createHash("sha256").update(redeemScript).digest("hex");
   }
 }
 ```
@@ -626,8 +634,8 @@ export class ContractBuilder {
 
 ```typescript
 // src/oracles/oracle-manager.ts
-import { PCSClient } from '@pcs/typescript-sdk';
-import axios from 'axios';
+import { PCSClient } from "@pcs/typescript-sdk";
+import axios from "axios";
 
 export class OracleManager {
   private pcs: PCSClient;
@@ -640,44 +648,47 @@ export class OracleManager {
 
   private initializeFeeds(): void {
     // Price feeds
-    this.dataFeeds.set('btc_usd', {
-      name: 'Bitcoin Price (USD)',
-      type: 'price',
+    this.dataFeeds.set("btc_usd", {
+      name: "Bitcoin Price (USD)",
+      type: "price",
       sources: [
-        'https://api.coinbase.com/v2/exchange-rates?currency=BTC',
-        'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',
-        'https://api.kraken.com/0/public/Ticker?pair=BTCUSD'
+        "https://api.coinbase.com/v2/exchange-rates?currency=BTC",
+        "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",
+        "https://api.kraken.com/0/public/Ticker?pair=BTCUSD",
       ],
       updateInterval: 60000, // 1 minute
-      aggregationMethod: 'median'
+      aggregationMethod: "median",
     });
 
     // Weather feeds
-    this.dataFeeds.set('weather_temp', {
-      name: 'Temperature Data',
-      type: 'weather',
+    this.dataFeeds.set("weather_temp", {
+      name: "Temperature Data",
+      type: "weather",
       sources: [
-        'https://api.openweathermap.org/data/2.5/weather',
-        'https://api.weatherapi.com/v1/current.json'
+        "https://api.openweathermap.org/data/2.5/weather",
+        "https://api.weatherapi.com/v1/current.json",
       ],
       updateInterval: 300000, // 5 minutes
-      aggregationMethod: 'average'
+      aggregationMethod: "average",
     });
 
     // Sports feeds
-    this.dataFeeds.set('sports_scores', {
-      name: 'Sports Scores',
-      type: 'sports',
+    this.dataFeeds.set("sports_scores", {
+      name: "Sports Scores",
+      type: "sports",
       sources: [
-        'https://api.the-odds-api.com/v4/sports',
-        'https://api.sportradar.com'
+        "https://api.the-odds-api.com/v4/sports",
+        "https://api.sportradar.com",
       ],
       updateInterval: 30000, // 30 seconds
-      aggregationMethod: 'latest'
+      aggregationMethod: "latest",
     });
   }
 
-  async getOracleData(feedId: string, conditions?: any): Promise<{
+  async getOracleData(
+    feedId: string,
+    conditions?: any
+  ): Promise<{
     value: any;
     timestamp: number;
     confidence: number;
@@ -689,21 +700,22 @@ export class OracleManager {
     }
 
     const results = await Promise.allSettled(
-      feed.sources.map(source => this.fetchFromSource(source, conditions))
+      feed.sources.map((source) => this.fetchFromSource(source, conditions))
     );
 
     const successfulResults = results
-      .filter((result): result is PromiseFulfilledResult<any> => 
-        result.status === 'fulfilled'
+      .filter(
+        (result): result is PromiseFulfilledResult<any> =>
+          result.status === "fulfilled"
       )
-      .map(result => result.value);
+      .map((result) => result.value);
 
     if (successfulResults.length === 0) {
       throw new Error(`No oracle sources available for ${feedId}`);
     }
 
     const aggregatedValue = this.aggregateValues(
-      successfulResults, 
+      successfulResults,
       feed.aggregationMethod
     );
 
@@ -713,7 +725,7 @@ export class OracleManager {
       value: aggregatedValue,
       timestamp: Date.now(),
       confidence,
-      sources: feed.sources
+      sources: feed.sources,
     };
   }
 
@@ -729,13 +741,13 @@ export class OracleManager {
     confidence: number;
   }> {
     // Use AI to analyze the condition
-    const analysis = await this.pcs.generatePrompt('bitscrow_oracle_analysis', {
+    const analysis = await this.pcs.generatePrompt("bitscrow_oracle_analysis", {
       context: {
         contract_id: params.contractId,
         condition: params.condition,
         expected_value: JSON.stringify(params.expectedValue),
-        actual_value: JSON.stringify(params.actualValue)
-      }
+        actual_value: JSON.stringify(params.actualValue),
+      },
     });
 
     let attestationResult;
@@ -744,9 +756,12 @@ export class OracleManager {
     } catch (error) {
       // Fallback analysis
       attestationResult = {
-        condition_met: this.compareValues(params.expectedValue, params.actualValue),
+        condition_met: this.compareValues(
+          params.expectedValue,
+          params.actualValue
+        ),
         confidence: 0.8,
-        explanation: 'Direct comparison performed'
+        explanation: "Direct comparison performed",
       };
     }
 
@@ -758,21 +773,24 @@ export class OracleManager {
       actualValue: params.actualValue,
       conditionMet: attestationResult.condition_met,
       confidence: attestationResult.confidence,
-      signature: params.signature
+      signature: params.signature,
     });
 
     return {
       attestationId,
       conditionMet: attestationResult.condition_met,
-      confidence: attestationResult.confidence
+      confidence: attestationResult.confidence,
     };
   }
 
-  private async fetchFromSource(source: string, conditions?: any): Promise<any> {
+  private async fetchFromSource(
+    source: string,
+    conditions?: any
+  ): Promise<any> {
     try {
       const response = await axios.get(source, {
         timeout: 5000,
-        params: conditions
+        params: conditions,
       });
       return response.data;
     } catch (error) {
@@ -782,38 +800,53 @@ export class OracleManager {
 
   private aggregateValues(values: any[], method: string): any {
     switch (method) {
-      case 'median':
+      case "median":
         const sorted = values.sort((a, b) => a - b);
         const mid = Math.floor(sorted.length / 2);
-        return sorted.length % 2 !== 0 
-          ? sorted[mid] 
+        return sorted.length % 2 !== 0
+          ? sorted[mid]
           : (sorted[mid - 1] + sorted[mid]) / 2;
-      
-      case 'average':
+
+      case "average":
         return values.reduce((sum, val) => sum + val, 0) / values.length;
-      
-      case 'latest':
+
+      case "latest":
         return values[values.length - 1];
-      
+
       default:
         return values[0];
     }
   }
 
   private compareValues(expected: any, actual: any): boolean {
-    if (typeof expected === 'number' && typeof actual === 'number') {
+    if (typeof expected === "number" && typeof actual === "number") {
       // Allow 1% tolerance for numerical comparisons
       const tolerance = Math.abs(expected * 0.01);
       return Math.abs(expected - actual) <= tolerance;
     }
-    
+
     return expected === actual;
   }
 
   private async storeAttestation(attestation: any): Promise<string> {
     // Implementation to store attestation in database
     // Returns attestation ID
-    return 'attestation_' + Date.now().toString();
+    // Hash the attestation data to create a deterministic ID
+    const attestationStr = JSON.stringify(attestation);
+    const hash = crypto
+      .createHash("sha256")
+      .update(attestationStr)
+      .digest("hex");
+
+    // Create a UUID using first 32 chars of hash
+    const attestationId = [
+      hash.slice(0, 8),
+      hash.slice(8, 12),
+      hash.slice(12, 16),
+      hash.slice(16, 20),
+      hash.slice(20, 32),
+    ].join("-");
+    return "attestation_" + attestationId;
   }
 }
 
@@ -832,7 +865,7 @@ interface OracleFeed {
 
 ```typescript
 // src/disputes/dispute-resolver.ts
-import { PCSClient } from '@pcs/typescript-sdk';
+import { PCSClient } from "@pcs/typescript-sdk";
 
 export class DisputeResolver {
   private pcs: PCSClient;
@@ -858,24 +891,28 @@ export class DisputeResolver {
   }> {
     // Gather contract context
     const contractContext = await this.getContractContext(dispute.contractId);
-    
+
     // Use AI to analyze the dispute
-    const analysis = await this.pcs.generatePrompt('bitscrow_dispute_analysis', {
-      context: {
-        dispute_type: dispute.type,
-        dispute_description: dispute.description,
-        contract_context: JSON.stringify(contractContext),
-        evidence: JSON.stringify(dispute.evidence),
-        raised_by: dispute.raisedBy,
-        defendant_response: dispute.defendantResponse || 'No response provided'
+    const analysis = await this.pcs.generatePrompt(
+      "bitscrow_dispute_analysis",
+      {
+        context: {
+          dispute_type: dispute.type,
+          dispute_description: dispute.description,
+          contract_context: JSON.stringify(contractContext),
+          evidence: JSON.stringify(dispute.evidence),
+          raised_by: dispute.raisedBy,
+          defendant_response:
+            dispute.defendantResponse || "No response provided",
+        },
       }
-    });
+    );
 
     let disputeAnalysis;
     try {
       disputeAnalysis = JSON.parse(analysis.generated_prompt);
     } catch (error) {
-      throw new Error('Failed to analyze dispute: ' + error.message);
+      throw new Error("Failed to analyze dispute: " + error.message);
     }
 
     return {
@@ -883,30 +920,37 @@ export class DisputeResolver {
       recommendation: disputeAnalysis.recommendation,
       confidence: disputeAnalysis.confidence,
       suggestedResolution: disputeAnalysis.suggested_resolution,
-      requiresHuman: disputeAnalysis.confidence < 0.8 || disputeAnalysis.requires_human
+      requiresHuman:
+        disputeAnalysis.confidence < 0.8 || disputeAnalysis.requires_human,
     };
   }
 
-  async proposeResolution(dispute: any, analysis: any): Promise<{
+  async proposeResolution(
+    dispute: any,
+    analysis: any
+  ): Promise<{
     resolutionType: string;
     distributionPlan: any;
     reasoning: string;
     votingRequired: boolean;
   }> {
-    const resolution = await this.pcs.generatePrompt('bitscrow_resolution_proposal', {
-      context: {
-        dispute_analysis: JSON.stringify(analysis),
-        contract_amount: dispute.contractAmount,
-        dispute_amount: dispute.disputeAmount,
-        available_remedies: JSON.stringify([
-          'full_refund',
-          'partial_refund',
-          'completion_with_penalty',
-          'mediated_agreement',
-          'split_decision'
-        ])
+    const resolution = await this.pcs.generatePrompt(
+      "bitscrow_resolution_proposal",
+      {
+        context: {
+          dispute_analysis: JSON.stringify(analysis),
+          contract_amount: dispute.contractAmount,
+          dispute_amount: dispute.disputeAmount,
+          available_remedies: JSON.stringify([
+            "full_refund",
+            "partial_refund",
+            "completion_with_penalty",
+            "mediated_agreement",
+            "split_decision",
+          ]),
+        },
       }
-    });
+    );
 
     return JSON.parse(resolution.generated_prompt);
   }
@@ -927,7 +971,7 @@ export class DisputeResolver {
     // based on the resolution decision
 
     const transactions = [];
-    
+
     try {
       // Execute the resolution plan
       for (const distribution of params.distributionPlan.distributions) {
@@ -935,25 +979,24 @@ export class DisputeResolver {
           to: distribution.address,
           amount: distribution.amount,
           escrowWalletId: params.escrowWalletId,
-          signatures: params.signatures
+          signatures: params.signatures,
         });
         transactions.push(txid);
       }
 
       // Update dispute status
-      await this.updateDisputeStatus(params.disputeId, 'resolved');
+      await this.updateDisputeStatus(params.disputeId, "resolved");
 
       return {
         transactionIds: transactions,
         success: true,
-        message: 'Resolution executed successfully'
+        message: "Resolution executed successfully",
       };
-      
     } catch (error) {
       return {
         transactionIds: transactions,
         success: false,
-        message: 'Failed to execute resolution: ' + error.message
+        message: "Failed to execute resolution: " + error.message,
       };
     }
   }
@@ -967,19 +1010,14 @@ export class DisputeResolver {
   private async createResolutionTransaction(params: any): Promise<string> {
     // Create and broadcast Bitcoin transaction
     // Return transaction ID
-    return 'txid_placeholder';
+    return "txid_placeholder";
   }
 
-  private async updateDisputeStatus(disputeId: string, status: string): Promise<void> {
+  private async updateDisputeStatus(
+    disputeId: string,
+    status: string
+  ): Promise<void> {
     // Update dispute status in database
   }
 }
 ```
-
-I'll continue with the remaining components including prompt scaffolding, usage examples, and then complete all four recipes. Would you like me to complete the Bitscrow implementation and finalize all the recipes?
-
-<function_calls>
-<invoke name="todo_write">
-<parameter name="merge">true</parameter>
-<parameter name="todos">[{"id": "bitscrow-recipe", "content": "Create complete Bitscrow recipe in docs/recipes/", "status": "completed"}]</parameter>
-</invoke>
