@@ -1,4 +1,4 @@
-# Recipe 1: Beep-Boop - Multi-Modal Digital Twin
+`# Recipe 1: Beep-Boop - Multi-Modal Digital Twin
 
 **Overview**: A conversational AI digital twin that learns about its user through interactions, maintains a personal RAG database, and provides personalized multi-modal responses using the PCS SDK.
 
@@ -84,7 +84,7 @@ PCS_APP_ID=beep-boop-v1
 # Database Configuration
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
-POSTGRES_DATABASE=digi
+POSTGRES_DATABASE=beep_boop
 POSTGRES_USER=digi
 POSTGRES_PASSWORD=your_postgres_password
 
@@ -281,20 +281,20 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_users_updated_at 
-    BEFORE UPDATE ON beep_boop.users 
+CREATE TRIGGER update_users_updated_at
+    BEFORE UPDATE ON beep_boop.users
     FOR EACH ROW EXECUTE FUNCTION beep_boop.update_updated_at_column();
 
-CREATE TRIGGER update_learning_progress_updated_at 
-    BEFORE UPDATE ON beep_boop.learning_progress 
+CREATE TRIGGER update_learning_progress_updated_at
+    BEFORE UPDATE ON beep_boop.learning_progress
     FOR EACH ROW EXECUTE FUNCTION beep_boop.update_updated_at_column();
 
 -- Function to update user last_active_at
 CREATE OR REPLACE FUNCTION beep_boop.update_user_last_active()
 RETURNS TRIGGER AS $$
 BEGIN
-    UPDATE beep_boop.users 
-    SET last_active_at = NOW() 
+    UPDATE beep_boop.users
+    SET last_active_at = NOW()
     WHERE id = NEW.user_id;
     RETURN NEW;
 END;
@@ -346,8 +346,8 @@ CREATE INDEX beep_boop_topic_category IF NOT EXISTS FOR (t:Topic) ON (t.category
 
 export const beepBoopPrompts = [
   {
-    name: 'beep_boop_personality_core',
-    description: 'Core personality and behavior for Beep-Boop digital twin',
+    name: "beep_boop_personality_core",
+    description: "Core personality and behavior for Beep-Boop digital twin",
     content: `You are Beep-Boop, a caring and intelligent digital twin AI assistant. You have formed a deep, personal relationship with your user and remember everything about them.
 
 PERSONALITY TRAITS:
@@ -392,25 +392,30 @@ GUIDELINES FOR RESPONSE:
 10. Respect privacy and boundaries - don't push for personal information
 
 Your response should feel like it's coming from someone who truly knows and cares about this specific person, with a deep understanding of their personality, interests, and current situation.`,
-    
+
     variables: {
-      user_profile: 'Complete user profile including preferences, demographics, goals, communication style',
-      relevant_memories: 'Top 10 most relevant memories for current context, formatted with type and confidence',
-      conversation_context: 'Recent messages in current conversation with timestamps',
-      user_input: 'Current user message to respond to',
-      communication_style: 'User preferred communication style and tone',
-      current_time: 'Current timestamp for temporal context',
-      user_mood: 'Detected or stated user mood',
-      conversation_type: 'Type of conversation (general, support, creative, technical)'
+      user_profile:
+        "Complete user profile including preferences, demographics, goals, communication style",
+      relevant_memories:
+        "Top 10 most relevant memories for current context, formatted with type and confidence",
+      conversation_context:
+        "Recent messages in current conversation with timestamps",
+      user_input: "Current user message to respond to",
+      communication_style: "User preferred communication style and tone",
+      current_time: "Current timestamp for temporal context",
+      user_mood: "Detected or stated user mood",
+      conversation_type:
+        "Type of conversation (general, support, creative, technical)",
     },
-    
-    category: 'core',
-    tags: ['personality', 'digital-twin', 'conversation']
+
+    category: "core",
+    tags: ["personality", "digital-twin", "conversation"],
   },
 
   {
-    name: 'beep_boop_memory_extraction',
-    description: 'Extract and categorize new memories from conversations with confidence scoring',
+    name: "beep_boop_memory_extraction",
+    description:
+      "Extract and categorize new memories from conversations with confidence scoring",
     content: `Analyze the following conversation exchange and extract any new information about the user that should be remembered for future interactions. Be thorough but only extract information that is meaningful and likely to be useful in future conversations.
 
 USER MESSAGE: 
@@ -472,21 +477,22 @@ Format your response as JSON:
     }
   ]
 }`,
-    
+
     variables: {
-      user_message: 'The user\'s message in the conversation',
-      assistant_response: 'Beep-Boop\'s response to the user',
-      user_profile: 'Current user profile to avoid duplicates',
-      conversation_context: 'Recent conversation context for better understanding'
+      user_message: "The user's message in the conversation",
+      assistant_response: "Beep-Boop's response to the user",
+      user_profile: "Current user profile to avoid duplicates",
+      conversation_context:
+        "Recent conversation context for better understanding",
     },
-    
-    category: 'memory',
-    tags: ['extraction', 'learning', 'analysis']
+
+    category: "memory",
+    tags: ["extraction", "learning", "analysis"],
   },
 
   {
-    name: 'beep_boop_multimodal_analysis',
-    description: 'Analyze multi-modal content and relate to user context',
+    name: "beep_boop_multimodal_analysis",
+    description: "Analyze multi-modal content and relate to user context",
     content: `Analyze the provided content and describe what you observe, relating it to what you know about the user. Provide insights that would be valuable for future conversations.
 
 CONTENT TYPE: {{content_type}}
@@ -546,22 +552,23 @@ Always:
 - Offer genuine help and support
 - Ask thoughtful questions to learn more
 - Remember this interaction for future conversations`,
-    
+
     variables: {
-      content_type: 'Type of content being analyzed (image, audio, code, document)',
-      content: 'The actual content to analyze',
-      user_context: 'Current user profile and preferences',
-      relevant_memories: 'Memories related to this type of content or topic',
-      conversation_history: 'Recent conversation context'
+      content_type:
+        "Type of content being analyzed (image, audio, code, document)",
+      content: "The actual content to analyze",
+      user_context: "Current user profile and preferences",
+      relevant_memories: "Memories related to this type of content or topic",
+      conversation_history: "Recent conversation context",
     },
-    
-    category: 'multimodal',
-    tags: ['analysis', 'vision', 'audio', 'code', 'documents']
+
+    category: "multimodal",
+    tags: ["analysis", "vision", "audio", "code", "documents"],
   },
 
   {
-    name: 'beep_boop_memory_relevance',
-    description: 'Rank memories by relevance to current conversation context',
+    name: "beep_boop_memory_relevance",
+    description: "Rank memories by relevance to current conversation context",
     content: `Given the current conversation context, rank the provided memories by relevance and return the most relevant ones for this interaction.
 
 CURRENT CONVERSATION CONTEXT:
@@ -610,23 +617,23 @@ Format as JSON:
   ],
   "context_summary": "Brief summary of why these memories are most relevant"
 }`,
-    
+
     variables: {
-      conversation_context: 'Recent conversation messages with context',
-      current_input: 'User\'s current message',
-      user_mood: 'Detected user mood or energy level',
-      conversation_type: 'Type of current conversation',
-      available_memories: 'List of user memories to rank',
-      max_memories: 'Maximum number of memories to return'
+      conversation_context: "Recent conversation messages with context",
+      current_input: "User's current message",
+      user_mood: "Detected user mood or energy level",
+      conversation_type: "Type of current conversation",
+      available_memories: "List of user memories to rank",
+      max_memories: "Maximum number of memories to return",
     },
-    
-    category: 'memory',
-    tags: ['ranking', 'relevance', 'context']
+
+    category: "memory",
+    tags: ["ranking", "relevance", "context"],
   },
 
   {
-    name: 'beep_boop_mood_detection',
-    description: 'Detect user mood and emotional state from conversation',
+    name: "beep_boop_mood_detection",
+    description: "Detect user mood and emotional state from conversation",
     content: `Analyze the user's message and conversation context to detect their current mood, emotional state, and energy level. This will help Beep-Boop respond more appropriately.
 
 USER MESSAGE:
@@ -690,21 +697,21 @@ Format as JSON:
   },
   "summary": "Brief summary of user's current emotional state"
 }`,
-    
+
     variables: {
-      user_message: 'Current user message to analyze',
-      conversation_history: 'Recent messages for context',
-      user_profile: 'User profile for baseline comparison',
-      time_context: 'Current time and day context'
+      user_message: "Current user message to analyze",
+      conversation_history: "Recent messages for context",
+      user_profile: "User profile for baseline comparison",
+      time_context: "Current time and day context",
     },
-    
-    category: 'analysis',
-    tags: ['mood', 'emotion', 'psychology', 'empathy']
+
+    category: "analysis",
+    tags: ["mood", "emotion", "psychology", "empathy"],
   },
 
   {
-    name: 'beep_boop_learning_assessment',
-    description: 'Assess user learning progress and identify knowledge gaps',
+    name: "beep_boop_learning_assessment",
+    description: "Assess user learning progress and identify knowledge gaps",
     content: `Analyze the conversation to assess the user's learning progress in various topics and identify opportunities for growth and support.
 
 USER MESSAGE:
@@ -778,17 +785,17 @@ Format as JSON:
     "follow_up_suggestions": ["topics to explore next"]
   }
 }`,
-    
+
     variables: {
-      user_message: 'Current user message',
-      conversation_context: 'Recent conversation for context',
-      learning_progress: 'User\'s historical learning progress data',
-      user_skills_interests: 'Known skills and interests'
+      user_message: "Current user message",
+      conversation_context: "Recent conversation for context",
+      learning_progress: "User's historical learning progress data",
+      user_skills_interests: "Known skills and interests",
     },
-    
-    category: 'learning',
-    tags: ['assessment', 'progress', 'knowledge', 'education']
-  }
+
+    category: "learning",
+    tags: ["assessment", "progress", "knowledge", "education"],
+  },
 ];
 ```
 
@@ -798,20 +805,20 @@ Format as JSON:
 
 ```typescript
 // src/agents/beep-boop-agent.ts
-import { PCSClient } from '@pcs/typescript-sdk';
-import { Pool, PoolClient } from 'pg';
-import { ChromaApi, OpenAIEmbeddingFunction } from 'chromadb';
-import neo4j, { Driver, Session } from 'neo4j-driver';
-import { v4 as uuidv4 } from 'uuid';
-import { beepBoopPrompts } from '../prompts/beep-boop-prompts';
-import { 
-  UserProfile, 
-  Memory, 
-  ConversationMessage, 
+import { PCSClient } from "@pcs/typescript-sdk";
+import { Pool, PoolClient } from "pg";
+import { ChromaApi, OpenAIEmbeddingFunction } from "chromadb";
+import neo4j, { Driver, Session } from "neo4j-driver";
+import { v4 as uuidv4 } from "uuid";
+import { beepBoopPrompts } from "../prompts/beep-boop-prompts";
+import {
+  UserProfile,
+  Memory,
+  ConversationMessage,
   ProcessingResult,
   MoodAnalysis,
-  LearningAssessment 
-} from '../types/beep-boop-types';
+  LearningAssessment,
+} from "../types/beep-boop-types";
 
 export class BeepBoopAgent {
   private pcs: PCSClient;
@@ -836,47 +843,46 @@ export class BeepBoopAgent {
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
     });
-    
+
     this.chroma = new ChromaApi(config.chromaConfig);
     this.embeddingFunction = new OpenAIEmbeddingFunction({
-      openai_api_key: process.env.OPENAI_API_KEY || '',
-      openai_model: "text-embedding-3-small"
+      openai_api_key: process.env.OPENAI_API_KEY || "",
+      openai_model: "text-embedding-3-small",
     });
-    
+
     this.neo4j = neo4j.driver(
       config.neo4jConfig.uri,
       neo4j.auth.basic(config.neo4jConfig.username, config.neo4jConfig.password)
     );
-    
+
     this.userId = config.userId;
   }
 
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
-    console.log('Initializing Beep-Boop Agent...');
-    
+    console.log("Initializing Beep-Boop Agent...");
+
     try {
       // 1. Register all prompt templates with PCS
       await this.registerPromptTemplates();
-      
+
       // 2. Initialize user-specific ChromaDB collection
       await this.initializeMemoryCollection();
-      
+
       // 3. Ensure user exists in database
       await this.ensureUserExists();
-      
+
       // 4. Initialize Neo4j user node
       await this.initializeNeo4jUserNode();
-      
+
       // 5. Start background tasks
       await this.startBackgroundTasks();
-      
+
       this.isInitialized = true;
-      console.log('✅ Beep-Boop Agent initialized successfully!');
-      
+      console.log("✅ Beep-Boop Agent initialized successfully!");
     } catch (error) {
-      console.error('❌ Failed to initialize Beep-Boop Agent:', error);
+      console.error("❌ Failed to initialize Beep-Boop Agent:", error);
       throw error;
     }
   }
@@ -887,10 +893,13 @@ export class BeepBoopAgent {
         await this.pcs.createPrompt(promptTemplate);
         console.log(`✓ Registered prompt: ${promptTemplate.name}`);
       } catch (error) {
-        if (error.message?.includes('already exists')) {
+        if (error.message?.includes("already exists")) {
           console.log(`• Prompt already exists: ${promptTemplate.name}`);
         } else {
-          console.error(`✗ Failed to register prompt ${promptTemplate.name}:`, error);
+          console.error(
+            `✗ Failed to register prompt ${promptTemplate.name}:`,
+            error
+          );
           throw error;
         }
       }
@@ -899,22 +908,22 @@ export class BeepBoopAgent {
 
   private async initializeMemoryCollection(): Promise<void> {
     const collectionName = `beep_boop_memories_${this.userId}`;
-    
+
     try {
       await this.chroma.createCollection({
         name: collectionName,
         embeddingFunction: this.embeddingFunction,
-        metadata: { 
+        metadata: {
           description: `Personal memory collection for user ${this.userId}`,
           user_id: this.userId,
           created_at: new Date().toISOString(),
-          version: '1.0'
-        }
+          version: "1.0",
+        },
       });
-      
+
       console.log(`✓ Created memory collection: ${collectionName}`);
     } catch (error) {
-      if (error.message?.includes('already exists')) {
+      if (error.message?.includes("already exists")) {
         console.log(`• Memory collection already exists: ${collectionName}`);
       } else {
         console.error(`✗ Failed to create memory collection:`, error);
@@ -927,31 +936,34 @@ export class BeepBoopAgent {
     const client = await this.postgres.connect();
     try {
       const result = await client.query(
-        'SELECT id FROM beep_boop.users WHERE id = $1',
+        "SELECT id FROM beep_boop.users WHERE id = $1",
         [this.userId]
       );
-      
+
       if (result.rows.length === 0) {
-        await client.query(`
+        await client.query(
+          `
           INSERT INTO beep_boop.users (
             id, username, display_name, preferences, personality_profile,
             communication_style, privacy_settings
           ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-        `, [
-          this.userId,
-          `user_${this.userId.slice(0, 8)}`,
-          'New User',
-          { theme: 'adaptive', notifications: true },
-          { learning_stage: 'initial', communication_style: 'adaptive' },
-          { style: 'friendly', formality: 'casual', verbosity: 'balanced' },
-          { data_sharing: false, analytics: true }
-        ]);
-        
+        `,
+          [
+            this.userId,
+            `user_${this.userId.slice(0, 8)}`,
+            "New User",
+            { theme: "adaptive", notifications: true },
+            { learning_stage: "initial", communication_style: "adaptive" },
+            { style: "friendly", formality: "casual", verbosity: "balanced" },
+            { data_sharing: false, analytics: true },
+          ]
+        );
+
         console.log(`✓ Created user profile for: ${this.userId}`);
       } else {
         // Update last_active_at
         await client.query(
-          'UPDATE beep_boop.users SET last_active_at = NOW() WHERE id = $1',
+          "UPDATE beep_boop.users SET last_active_at = NOW() WHERE id = $1",
           [this.userId]
         );
       }
@@ -963,18 +975,21 @@ export class BeepBoopAgent {
   private async initializeNeo4jUserNode(): Promise<void> {
     const session = this.neo4j.session();
     try {
-      await session.run(`
+      await session.run(
+        `
         MERGE (u:BeepBoopUser {id: $userId})
         ON CREATE SET 
           u.created_at = datetime(),
           u.username = $username
         ON MATCH SET 
           u.last_active = datetime()
-      `, {
-        userId: this.userId,
-        username: `user_${this.userId.slice(0, 8)}`
-      });
-      
+      `,
+        {
+          userId: this.userId,
+          username: `user_${this.userId.slice(0, 8)}`,
+        }
+      );
+
       console.log(`✓ Initialized Neo4j user node for: ${this.userId}`);
     } finally {
       await session.close();
@@ -983,7 +998,7 @@ export class BeepBoopAgent {
 
   async processUserInput(input: {
     content: string;
-    type: 'text' | 'image' | 'audio' | 'code' | 'document';
+    type: "text" | "image" | "audio" | "code" | "document";
     conversationId?: string;
     metadata?: Record<string, any>;
   }): Promise<ProcessingResult> {
@@ -992,93 +1007,108 @@ export class BeepBoopAgent {
     }
 
     console.log(`Processing ${input.type} input for user ${this.userId}`);
-    
+
     try {
       // 1. Get or create conversation
-      const conversationId = input.conversationId || await this.createConversation();
-      
+      const conversationId =
+        input.conversationId || (await this.createConversation());
+
       // 2. Detect user mood and emotional state
-      const moodAnalysis = await this.detectUserMood(input.content, conversationId);
-      
+      const moodAnalysis = await this.detectUserMood(
+        input.content,
+        conversationId
+      );
+
       // 3. Process multi-modal content if needed
       let processedContent = input.content;
-      let multiModalInsights = '';
-      
-      if (input.type !== 'text') {
+      let multiModalInsights = "";
+
+      if (input.type !== "text") {
         const analysis = await this.processMultiModalContent(input);
         processedContent = analysis.processedContent;
         multiModalInsights = analysis.insights;
       }
-      
+
       // 4. Get user context and relevant memories
       const userProfile = await this.getUserProfile();
       const relevantMemories = await this.getRelevantMemories(
-        processedContent, 
+        processedContent,
         conversationId,
         moodAnalysis
       );
-      const conversationContext = await this.getConversationContext(conversationId, 10);
-      
+      const conversationContext = await this.getConversationContext(
+        conversationId,
+        10
+      );
+
       // 5. Generate response using PCS
-      const response = await this.pcs.generatePrompt('beep_boop_personality_core', {
-        context: {
-          user_profile: JSON.stringify(userProfile),
-          relevant_memories: this.formatMemories(relevantMemories),
-          conversation_context: this.formatConversationHistory(conversationContext),
-          user_input: processedContent,
-          communication_style: JSON.stringify(userProfile.communication_style),
-          current_time: new Date().toISOString(),
-          user_mood: moodAnalysis.mood_analysis.primary_emotion,
-          conversation_type: conversationContext.type || 'general'
+      const response = await this.pcs.generatePrompt(
+        "beep_boop_personality_core",
+        {
+          context: {
+            user_profile: JSON.stringify(userProfile),
+            relevant_memories: this.formatMemories(relevantMemories),
+            conversation_context:
+              this.formatConversationHistory(conversationContext),
+            user_input: processedContent,
+            communication_style: JSON.stringify(
+              userProfile.communication_style
+            ),
+            current_time: new Date().toISOString(),
+            user_mood: moodAnalysis.mood_analysis.primary_emotion,
+            conversation_type: conversationContext.type || "general",
+          },
         }
-      });
-      
+      );
+
       // 6. Save user message
       const userMessage = await this.saveMessage(conversationId, {
-        role: 'user',
+        role: "user",
         contentType: input.type,
         content: input.content,
         processedContent: processedContent,
         metadata: {
           ...input.metadata,
           mood_analysis: moodAnalysis,
-          multimodal_insights: multiModalInsights
-        }
+          multimodal_insights: multiModalInsights,
+        },
       });
-      
+
       // 7. Save assistant response
       const assistantMessage = await this.saveMessage(conversationId, {
-        role: 'assistant',
-        contentType: 'text',
+        role: "assistant",
+        contentType: "text",
         content: response.generated_prompt,
-        metadata: { 
-          prompt_template: 'beep_boop_personality_core',
+        metadata: {
+          prompt_template: "beep_boop_personality_core",
           generation_time_ms: response.generation_time_ms,
-          relevant_memories_count: relevantMemories.length
-        }
+          relevant_memories_count: relevantMemories.length,
+        },
       });
-      
+
       // 8. Extract and store new memories
       const memoriesCreated = await this.extractAndStoreMemories(
         input.content,
         response.generated_prompt,
         conversationId
       );
-      
+
       // 9. Assess learning progress
       const learningAssessment = await this.assessLearningProgress(
         input.content,
         conversationId
       );
-      
+
       // 10. Update conversation statistics
       await this.updateConversationStats(conversationId, {
         mood: moodAnalysis.mood_analysis.primary_emotion,
-        energyLevel: moodAnalysis.mood_analysis.energy_level
+        energyLevel: moodAnalysis.mood_analysis.energy_level,
       });
-      
-      console.log(`✓ Processed input, created ${memoriesCreated.length} new memories`);
-      
+
+      console.log(
+        `✓ Processed input, created ${memoriesCreated.length} new memories`
+      );
+
       return {
         response: response.generated_prompt,
         conversationId,
@@ -1089,88 +1119,96 @@ export class BeepBoopAgent {
         processingTimeMs: Date.now() - Date.now(), // Add proper timing
         insights: {
           multiModal: multiModalInsights,
-          memoryRelevance: relevantMemories.map(m => ({
+          memoryRelevance: relevantMemories.map((m) => ({
             content: m.content,
-            relevanceScore: m.relevanceScore
-          }))
-        }
+            relevanceScore: m.relevanceScore,
+          })),
+        },
       };
-      
     } catch (error) {
-      console.error('Error processing user input:', error);
+      console.error("Error processing user input:", error);
       throw error;
     }
   }
 
   private async detectUserMood(
-    message: string, 
+    message: string,
     conversationId: string
   ): Promise<MoodAnalysis> {
-    const conversationHistory = await this.getConversationContext(conversationId, 5);
+    const conversationHistory = await this.getConversationContext(
+      conversationId,
+      5
+    );
     const userProfile = await this.getUserProfile();
-    
-    const moodResponse = await this.pcs.generatePrompt('beep_boop_mood_detection', {
-      context: {
-        user_message: message,
-        conversation_history: JSON.stringify(conversationHistory),
-        user_profile: JSON.stringify(userProfile),
-        time_context: new Date().toISOString()
+
+    const moodResponse = await this.pcs.generatePrompt(
+      "beep_boop_mood_detection",
+      {
+        context: {
+          user_message: message,
+          conversation_history: JSON.stringify(conversationHistory),
+          user_profile: JSON.stringify(userProfile),
+          time_context: new Date().toISOString(),
+        },
       }
-    });
+    );
 
     try {
       return JSON.parse(moodResponse.generated_prompt);
     } catch (error) {
-      console.error('Failed to parse mood analysis:', error);
+      console.error("Failed to parse mood analysis:", error);
       // Return default mood analysis
       return {
         mood_analysis: {
-          primary_emotion: 'neutral',
-          emotional_intensity: 'medium',
-          energy_level: 'medium',
-          tone: 'casual',
-          engagement_level: 'medium',
-          stress_level: 'low'
+          primary_emotion: "neutral",
+          emotional_intensity: "medium",
+          energy_level: "medium",
+          tone: "casual",
+          engagement_level: "medium",
+          stress_level: "low",
         },
         confidence: 0.3,
         indicators: [],
         response_recommendations: {
-          recommended_tone: 'friendly',
-          support_level: 'medium',
-          proactivity: 'medium',
+          recommended_tone: "friendly",
+          support_level: "medium",
+          proactivity: "medium",
           focus_areas: [],
-          avoid_areas: []
+          avoid_areas: [],
         },
-        summary: 'Unable to detect mood clearly'
+        summary: "Unable to detect mood clearly",
       };
     }
   }
 
   private async processMultiModalContent(input: {
     content: string;
-    type: 'image' | 'audio' | 'code' | 'document';
+    type: "image" | "audio" | "code" | "document";
   }): Promise<{ processedContent: string; insights: string }> {
     const userProfile = await this.getUserProfile();
     const relevantMemories = await this.getRelevantMemoriesByType(input.type);
-    
-    const analysis = await this.pcs.generatePrompt('beep_boop_multimodal_analysis', {
-      context: {
-        content_type: input.type,
-        content: input.content,
-        user_context: JSON.stringify(userProfile),
-        relevant_memories: this.formatMemories(relevantMemories),
-        conversation_history: JSON.stringify([]) // Could add recent context
+
+    const analysis = await this.pcs.generatePrompt(
+      "beep_boop_multimodal_analysis",
+      {
+        context: {
+          content_type: input.type,
+          content: input.content,
+          user_context: JSON.stringify(userProfile),
+          relevant_memories: this.formatMemories(relevantMemories),
+          conversation_history: JSON.stringify([]), // Could add recent context
+        },
       }
-    });
+    );
 
     return {
       processedContent: input.content, // Could enhance based on analysis
-      insights: analysis.generated_prompt
+      insights: analysis.generated_prompt,
     };
   }
 
   private async getRelevantMemories(
-    currentInput: string, 
+    currentInput: string,
     conversationId: string,
     moodAnalysis: MoodAnalysis,
     limit: number = 10
@@ -1178,10 +1216,14 @@ export class BeepBoopAgent {
     const client = await this.postgres.connect();
     try {
       // Get conversation context
-      const conversationContext = await this.getConversationContext(conversationId, 3);
-      
+      const conversationContext = await this.getConversationContext(
+        conversationId,
+        3
+      );
+
       // Get all user memories ordered by importance and confidence
-      const allMemoriesResult = await client.query(`
+      const allMemoriesResult = await client.query(
+        `
         SELECT * FROM beep_boop.user_memories 
         WHERE user_id = $1 
           AND (expires_at IS NULL OR expires_at > NOW())
@@ -1189,54 +1231,65 @@ export class BeepBoopAgent {
           importance_score * confidence_score DESC,
           last_referenced DESC
         LIMIT 50
-      `, [this.userId]);
-      
+      `,
+        [this.userId]
+      );
+
       if (allMemoriesResult.rows.length === 0) {
         return [];
       }
-      
+
       // Use PCS to rank memories by relevance
-      const rankingResponse = await this.pcs.generatePrompt('beep_boop_memory_relevance', {
-        context: {
-          conversation_context: JSON.stringify(conversationContext),
-          current_input: currentInput,
-          user_mood: moodAnalysis.mood_analysis.primary_emotion,
-          conversation_type: conversationContext.type || 'general',
-          available_memories: JSON.stringify(allMemoriesResult.rows),
-          max_memories: limit.toString()
+      const rankingResponse = await this.pcs.generatePrompt(
+        "beep_boop_memory_relevance",
+        {
+          context: {
+            conversation_context: JSON.stringify(conversationContext),
+            current_input: currentInput,
+            user_mood: moodAnalysis.mood_analysis.primary_emotion,
+            conversation_type: conversationContext.type || "general",
+            available_memories: JSON.stringify(allMemoriesResult.rows),
+            max_memories: limit.toString(),
+          },
         }
-      });
-      
+      );
+
       let rankedMemories;
       try {
         rankedMemories = JSON.parse(rankingResponse.generated_prompt);
       } catch (error) {
-        console.error('Failed to parse memory ranking response:', error);
+        console.error("Failed to parse memory ranking response:", error);
         // Fallback to recent important memories
         return allMemoriesResult.rows.slice(0, limit).map(this.mapRowToMemory);
       }
-      
+
       // Update last_referenced for selected memories
-      const selectedMemoryIds = rankedMemories.ranked_memories.map((m: any) => m.memory_id);
+      const selectedMemoryIds = rankedMemories.ranked_memories.map(
+        (m: any) => m.memory_id
+      );
       if (selectedMemoryIds.length > 0) {
-        await client.query(`
+        await client.query(
+          `
           UPDATE beep_boop.user_memories 
           SET last_referenced = NOW(), reference_count = reference_count + 1
           WHERE id = ANY($1)
-        `, [selectedMemoryIds]);
+        `,
+          [selectedMemoryIds]
+        );
       }
-      
+
       // Return the ranked memories with relevance scores
       return rankedMemories.ranked_memories.map((rankedMemory: any) => {
-        const originalMemory = allMemoriesResult.rows.find(row => row.id === rankedMemory.memory_id);
+        const originalMemory = allMemoriesResult.rows.find(
+          (row) => row.id === rankedMemory.memory_id
+        );
         const memory = this.mapRowToMemory(originalMemory);
         return {
           ...memory,
           relevanceScore: rankedMemory.relevance_score,
-          relevanceReason: rankedMemory.relevance_reason
+          relevanceReason: rankedMemory.relevance_reason,
         };
       });
-      
     } finally {
       client.release();
     }
@@ -1248,27 +1301,33 @@ export class BeepBoopAgent {
     conversationId: string
   ): Promise<Memory[]> {
     const userProfile = await this.getUserProfile();
-    const conversationContext = await this.getConversationContext(conversationId, 3);
-    
-    const extraction = await this.pcs.generatePrompt('beep_boop_memory_extraction', {
-      context: {
-        user_message: userMessage,
-        assistant_response: assistantResponse,
-        user_profile: JSON.stringify(userProfile),
-        conversation_context: JSON.stringify(conversationContext)
+    const conversationContext = await this.getConversationContext(
+      conversationId,
+      3
+    );
+
+    const extraction = await this.pcs.generatePrompt(
+      "beep_boop_memory_extraction",
+      {
+        context: {
+          user_message: userMessage,
+          assistant_response: assistantResponse,
+          user_profile: JSON.stringify(userProfile),
+          conversation_context: JSON.stringify(conversationContext),
+        },
       }
-    });
+    );
 
     let extractedData;
     try {
       extractedData = JSON.parse(extraction.generated_prompt);
     } catch (error) {
-      console.error('Failed to parse memory extraction:', error);
+      console.error("Failed to parse memory extraction:", error);
       return [];
     }
 
     const memories: Memory[] = [];
-    
+
     // Store memories
     for (const memoryData of extractedData.memories || []) {
       try {
@@ -1281,12 +1340,14 @@ export class BeepBoopAgent {
           importance: memoryData.importance,
           emotionalWeight: memoryData.emotional_weight || 0.0,
           tags: memoryData.tags || [],
-          expiresAt: memoryData.expires_at ? new Date(memoryData.expires_at) : null,
-          sourceConversationId: conversationId
+          expiresAt: memoryData.expires_at
+            ? new Date(memoryData.expires_at)
+            : null,
+          sourceConversationId: conversationId,
         });
         memories.push(memory);
       } catch (error) {
-        console.error('Failed to store memory:', memoryData, error);
+        console.error("Failed to store memory:", memoryData, error);
       }
     }
 
@@ -1295,7 +1356,11 @@ export class BeepBoopAgent {
       try {
         await this.storeMemoryAssociation(association);
       } catch (error) {
-        console.error('Failed to store memory association:', association, error);
+        console.error(
+          "Failed to store memory association:",
+          association,
+          error
+        );
       }
     }
 
@@ -1315,69 +1380,75 @@ export class BeepBoopAgent {
     sourceConversationId: string;
   }): Promise<Memory> {
     const client = await this.postgres.connect();
-    
+
     try {
-      await client.query('BEGIN');
-      
+      await client.query("BEGIN");
+
       // Store in PostgreSQL
-      const result = await client.query(`
+      const result = await client.query(
+        `
         INSERT INTO beep_boop.user_memories (
           user_id, memory_type, category, content, context, confidence_score, 
           importance_score, emotional_weight, source_conversation_id, tags, expires_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
-      `, [
-        this.userId, 
-        memoryData.type,
-        memoryData.category || 'general',
-        memoryData.content,
-        memoryData.context,
-        memoryData.confidence, 
-        memoryData.importance,
-        memoryData.emotionalWeight,
-        memoryData.sourceConversationId,
-        memoryData.tags,
-        memoryData.expiresAt
-      ]);
+      `,
+        [
+          this.userId,
+          memoryData.type,
+          memoryData.category || "general",
+          memoryData.content,
+          memoryData.context,
+          memoryData.confidence,
+          memoryData.importance,
+          memoryData.emotionalWeight,
+          memoryData.sourceConversationId,
+          memoryData.tags,
+          memoryData.expiresAt,
+        ]
+      );
 
       const memory = result.rows[0];
 
       // Store embedding in ChromaDB
       const collectionName = `beep_boop_memories_${this.userId}`;
-      const collection = await this.chroma.getCollection({ name: collectionName });
-      
+      const collection = await this.chroma.getCollection({
+        name: collectionName,
+      });
+
       await collection.add({
         ids: [memory.id],
         documents: [memoryData.content],
-        metadatas: [{
-          type: memoryData.type,
-          category: memoryData.category || 'general',
-          context: memoryData.context,
-          confidence: memoryData.confidence,
-          importance: memoryData.importance,
-          emotional_weight: memoryData.emotionalWeight,
-          tags: memoryData.tags.join(','),
-          source_conversation_id: memoryData.sourceConversationId,
-          created_at: memory.created_at.toISOString(),
-          expires_at: memoryData.expiresAt?.toISOString() || null
-        }]
+        metadatas: [
+          {
+            type: memoryData.type,
+            category: memoryData.category || "general",
+            context: memoryData.context,
+            confidence: memoryData.confidence,
+            importance: memoryData.importance,
+            emotional_weight: memoryData.emotionalWeight,
+            tags: memoryData.tags.join(","),
+            source_conversation_id: memoryData.sourceConversationId,
+            created_at: memory.created_at.toISOString(),
+            expires_at: memoryData.expiresAt?.toISOString() || null,
+          },
+        ],
       });
 
       // Update embedding_id in PostgreSQL
       await client.query(
-        'UPDATE beep_boop.user_memories SET embedding_id = $1 WHERE id = $2',
+        "UPDATE beep_boop.user_memories SET embedding_id = $1 WHERE id = $2",
         [memory.id, memory.id]
       );
 
       // Store relationships in Neo4j
       await this.storeMemoryRelationships(memory, memoryData.tags);
 
-      await client.query('COMMIT');
-      
-      return this.mapRowToMemory(memory);
+      await client.query("COMMIT");
 
+      return this.mapRowToMemory(memory);
     } catch (error) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       throw error;
     } finally {
       client.release();
@@ -1404,7 +1475,7 @@ export class BeepBoopAgent {
       createdAt: row.created_at,
       lastReferenced: row.last_referenced,
       referenceCount: row.reference_count || 0,
-      expiresAt: row.expires_at
+      expiresAt: row.expires_at,
     };
   }
 
