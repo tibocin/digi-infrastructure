@@ -283,7 +283,7 @@ def get_app():
     return get_app._app
 
 # For compatibility with ASGI servers that expect an 'app' variable
-app = None
+app = get_app()
 
 
 if __name__ == "__main__":
