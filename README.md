@@ -145,6 +145,8 @@ services:
 
 ## Documentation
 
+- [Central Documentation Index](./DOCS_INDEX.md) - Single entry point for all Digi Infrastructure docs, with quick links and summaries.
+
 - [Deployment Guide](docs/DEPLOYMENT.md)
 - [Schema Management](docs/SCHEMA_MANAGEMENT.md)
 - [Infrastructure Repository Design](docs/INFRASTRUCTURE_REPOSITORY.md)
