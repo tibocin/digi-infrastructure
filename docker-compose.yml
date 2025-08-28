@@ -30,7 +30,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-digi}
       POSTGRES_DB: ${POSTGRES_DB:-digi}
       POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES:-digi_core,lernmi,beep_boop,pcs}
-      PCS_DB_PASSWORD: ${PCS_DB_PASSWORD:-pcs_pass}
+      PCS_DB_PASSWORD: ${PCS_DB_PASSWORD}
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./scripts/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh:ro
@@ -127,12 +127,12 @@ services:
     environment:
       - PCS_ENVIRONMENT=${PCS_ENVIRONMENT:-production}
       - PCS_DEBUG=${PCS_DEBUG:-false}
-      - PCS_SECURITY_SECRET_KEY=${PCS_SECURITY_SECRET_KEY:-change_me_to_secure_secret_key}
-      - PCS_SECURITY_JWT_SECRET_KEY=${PCS_SECURITY_JWT_SECRET_KEY:-change_me_to_secure_jwt_secret_key}
+      - PCS_SECURITY_SECRET_KEY=${PCS_SECURITY_SECRET_KEY}
+      - PCS_SECURITY_JWT_SECRET_KEY=${PCS_SECURITY_JWT_SECRET_KEY}
       - PCS_DB_HOST=postgres
       - PCS_DB_PORT=5432
       - PCS_DB_USER=pcs_user
-      - PCS_DB_PASSWORD=${PCS_DB_PASSWORD:-pcs_pass}
+      - PCS_DB_PASSWORD=${PCS_DB_PASSWORD}
       - PCS_DB_NAME=pcs
       - PCS_REDIS_HOST=redis
       - PCS_REDIS_PORT=6379

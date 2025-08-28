@@ -12,7 +12,7 @@ services:
       - PCS_DB_HOST=postgres
       - PCS_DB_PORT=5432
       - PCS_DB_USER=pcs_user
-      - PCS_DB_PASSWORD=pcs_password
+      - PCS_DB_PASSWORD=${PCS_DB_PASSWORD}
       - PCS_DB_NAME=pcs_dev
       - PCS_REDIS_HOST=redis
       - PCS_REDIS_PORT=6379
@@ -21,7 +21,7 @@ services:
       - PCS_CHROMA_PORT=8001
       - PCS_NEO4J_URI=bolt://neo4j:7687
       - PCS_NEO4J_USER=neo4j
-      - PCS_NEO4J_PASSWORD=neo4j_password
+      - PCS_NEO4J_PASSWORD=${NEO4J_PASSWORD}
     ports:
       - "8000:8000"
     volumes:
