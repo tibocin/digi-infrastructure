@@ -226,6 +226,108 @@ resources:
    echo "YOUR_APP_POSTGRES_PASSWORD=secure_password" >> .env
    ```
 
+### 2.5 Bootstrap System & Idempotent Prompt Management
+
+The bootstrap system is a critical component that ensures all PCS-enabled applications start with the necessary foundational prompts and data structures. This system must be **completely idempotent** - it should be safe to run multiple times without errors or duplicate data.
+
+#### Core Principles
+
+##### 1. Idempotent Operations
+- **Database Schema:** Check if tables exist before creation
+- **Prompt Templates:** Verify existence before insertion, handle updates gracefully
+- **System Metadata:** Maintain initialization state without duplication
+- **Data Seeding:** Skip if already present, update if changed
+
+##### 2. Prompt Template Management
+The bootstrap system creates foundational prompts that serve as the "operating system" for semantic intelligence:
+
+**Required Core Prompts:**
+- `query_understanding` - Analyzes user intent and information needs
+- `knowledge_retrieval` - Finds relevant knowledge from stored data  
+- `response_generation` - Generates contextual, helpful responses
+- `feedback_learning` - Learns from user feedback to improve
+
+##### 3. Implementation Pattern
+
+```python
+async def _create_initial_prompts(self):
+    """Create foundational prompts idempotently."""
+    logger.info("🧠 Creating/updating initial prompts...")
+    
+    try:
+        initial_prompts = self._get_initial_prompt_templates()
+        
+        for prompt_data in initial_prompts:
+            # Check if prompt exists
+            existing_prompt = self.prompt_manager.get_prompt_template(prompt_data['name'])
+            
+            if existing_prompt:
+                # Update if content changed
+                if self._prompt_needs_update(existing_prompt, prompt_data):
+                    self.prompt_manager.update_prompt_template(prompt_data['name'], prompt_data)
+                    logger.info(f"🔄 Updated prompt: {prompt_data['name']}")
+                else:
+                    logger.info(f"✅ Prompt already exists: {prompt_data['name']}")
+            else:
+                # Create new prompt
+                self.prompt_manager.create_prompt_template(prompt_data)
+                logger.info(f"✅ Created prompt: {prompt_data['name']}")
+        
+        logger.info("✅ All initial prompts processed idempotently")
+        
+    except Exception as e:
+        logger.error(f"Failed to process initial prompts: {e}")
+        raise
+```
+
+##### 4. Bootstrap State Management
+The system maintains state through the `system_metadata` table:
+
+```sql
+-- Key bootstrap state indicators
+initialized: 'true'/'false'     -- Application initialization status
+version: '1.0.0'               -- Current application version  
+bootstrap_date: timestamp      -- Date of last successful bootstrap
+prompt_count: integer          -- Number of foundational prompts
+```
+
+##### 5. Error Handling and Recovery
+- **Graceful Degradation:** Continue operation even if some prompts fail
+- **Partial Success Handling:** Track what succeeded vs. failed
+- **Rollback Capability:** Revert to previous state if critical failures occur
+- **Health Checks:** Verify bootstrap state on startup
+
+#### Usage in PCS Repositories
+
+All repositories using PCS should implement this bootstrap pattern:
+
+1. **Check Initialization Status** - Verify if app is already bootstrapped
+2. **Create/Update Prompts** - Handle foundational prompts idempotently
+3. **Seed Required Data** - Initialize core data structures
+4. **Set Initialization Flag** - Mark bootstrap as complete
+5. **Health Monitoring** - Track bootstrap state and prompt health
+
+#### Testing Bootstrap Idempotency
+
+```bash
+# Test multiple bootstrap runs
+docker restart <app-container>
+# Should show: "✅ Application already initialized, skipping bootstrap"
+
+# Force re-bootstrap
+docker exec <app-container> python -c "from app.bootstrap import DigiCoreBootstrap; DigiCoreBootstrap().force_rebootstrap()"
+# Should handle updates gracefully without duplicates
+```
+
+#### Best Practices
+
+- **Always check existence** before creating resources
+- **Use upsert patterns** for data that may change
+- **Maintain audit trails** of bootstrap operations
+- **Implement health checks** for bootstrap state
+- **Handle version conflicts** gracefully
+- **Provide clear logging** for debugging bootstrap issues
+
 ## Phase 3: Integration & Testing
 
 ### 3.1 PCS SDK Integration
@@ -672,6 +774,15 @@ resources:
 - [ ] Initial prompts created
 - [ ] Connection tested
 
+### Bootstrap System
+
+- [ ] Implement idempotent bootstrap logic
+- [ ] Create foundational prompt templates
+- [ ] Set up system metadata tracking
+- [ ] Test bootstrap idempotency (multiple runs)
+- [ ] Implement bootstrap health checks
+- [ ] Test force re-bootstrap functionality
+
 ### Development & Testing
 
 - [ ] Database connections implemented
@@ -707,8 +818,9 @@ After successful onboarding:
 
 ## Related Documentation
 
-- [Dynamic Prompting Architecture](DYNAMIC_PROMPTING_ARCHITECTURE.md)
+- [Dynamic Prompting Architecture](DYNAMIC_PROMPTING_ARCHITORY.md)
 - [PCS SDK Reference](PCS_SDK_REFERENCE.md)
 - [Infrastructure Repository Design](INFRASTRUCTURE_REPOSITORY.md)
 - [Schema Management](SCHEMA_MANAGEMENT.md)
 - [Multi-App Deployment Strategy](MULTI_APP_DEPLOYMENT.md)
+- [Bootstrap System Implementation](../src/app/bootstrap.py) - Working example of idempotent bootstrap
