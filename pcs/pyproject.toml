@@ -131,7 +131,9 @@ warn_return_any = true
 strict_equality = true
 
 [[tool.mypy.overrides]]
-module = ["chromadb.*", "neo4j.*", "prometheus_client.*"]
+module = ["chromadb.*",
+"neo4j.*",
+"prometheus_client.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
