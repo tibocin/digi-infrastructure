@@ -13,10 +13,9 @@ from datetime import datetime
 from typing import List, Dict, Any
 import uuid
 
-import chromadb
-from chromadb import Collection as ChromaCollection
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+# Use our custom HTTP wrapper instead of external clients
+from pcs.repositories.qdrant_http_client import QdrantHTTPClient
+from pcs.repositories.qdrant_http_repo import EnhancedQdrantHTTPRepository
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
