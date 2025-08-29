@@ -986,6 +986,7 @@ name = "pcs"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "aiosqlite" },
     { name = "asyncpg" },
     { name = "fastapi" },
     { name = "httpx" },
@@ -1044,6 +1045,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiosqlite", specifier = ">=0.19.0" },
     { name = "aiosqlite", marker = "extra == 'dev'", specifier = "==0.19.0" },
     { name = "asyncpg", specifier = "==0.29.0" },
     { name = "black", marker = "extra == 'dev'", specifier = "==23.11.0" },
