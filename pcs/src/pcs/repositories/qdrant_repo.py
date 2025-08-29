@@ -8,7 +8,7 @@ Tags: qdrant, vector-database, embeddings, similarity-search, semantic, performa
 from typing import Any, Dict, List, Optional, Union, Tuple
 from uuid import UUID, uuid4
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import Enum
 import time
 import asyncio
@@ -354,7 +354,7 @@ class EnhancedQdrantRepository:
                 self._collection_cache[config.name] = {
                     "config": config,
                     "metadata": metadata or {},
-                    "created_at": datetime.utcnow()
+                    "created_at": datetime.now(UTC)
                 }
                 
                 monitor.set_rows_affected(1)
@@ -476,7 +476,7 @@ class EnhancedQdrantRepository:
                         content=payload.get("content", ""),
                         embedding=result.vector if request.include_embeddings and result.vector else [],
                         metadata={k: v for k, v in payload.items() if k not in ["content", "created_at", "collection_name", "tenant_id"]},
-                        created_at=datetime.fromisoformat(payload.get("created_at", datetime.utcnow().isoformat())),
+                        created_at=datetime.fromisoformat(payload.get("created_at", datetime.now(UTC).isoformat())),
                         collection_name=request.collection_name,
                         tenant_id=payload.get("tenant_id")
                     )
@@ -819,7 +819,7 @@ class EnhancedQdrantRepository:
                     index_type=index_type,
                     memory_usage_mb=memory_usage_mb,
                     avg_query_time_ms=avg_query_time,
-                    last_updated=datetime.utcnow(),
+                    last_updated=datetime.now(UTC),
                     tenant_count=tenant_count
                 )
                 
@@ -875,7 +875,7 @@ class EnhancedQdrantRepository:
                     "optimizations_applied": ["segment_optimization", "index_optimization"],
                     "performance_improvements": {
                         "optimization_triggered": True,
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(UTC).isoformat()
                     }
                 }
                 
@@ -952,7 +952,7 @@ class EnhancedQdrantRepository:
                 export_data = {
                     "collection_name": collection_name,
                     "format": format_type,
-                    "export_timestamp": datetime.utcnow().isoformat(),
+                    "export_timestamp": datetime.now(UTC).isoformat(),
                     "document_count": len(all_points),
                     "tenant_id": tenant_id
                 }
@@ -1126,7 +1126,7 @@ class EnhancedQdrantRepository:
                     content=content,
                     embedding=embeddings[i] if embeddings else [],
                     metadata=metadatas[i] if metadatas else {},
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
                     collection_name=collection_name,
                     tenant_id=tenant_id
                 )
@@ -1289,7 +1289,7 @@ class EnhancedQdrantRepository:
                     content=documents[i] if documents else "",
                     embedding=embeddings[i] if embeddings else [],
                     metadata=metadatas[i] if metadatas else {},
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
                     collection_name=collection_name,
                     tenant_id=tenant_id
                 )

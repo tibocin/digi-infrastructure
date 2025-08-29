@@ -8,7 +8,7 @@ Tags: testing, qdrant, vector-database, semantic-search, similarity-algorithms, 
 import pytest
 import asyncio
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 from uuid import uuid4
 from typing import List, Dict, Any
 import numpy as np
@@ -225,12 +225,11 @@ class TestEnhancedQdrantRepository:
             )
             
             mock_client_class.assert_called_once_with(
-                host="localhost",
-                port=6333,
+                url="https://localhost:6333",
                 grpc_port=6334,
                 prefer_grpc=True,
                 api_key="test_key",
-                https=True
+                headers={'api-key': 'test_key'}
             )
 
     @pytest.mark.asyncio
