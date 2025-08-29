@@ -436,6 +436,18 @@ docker exec <app-container> python -c "from app.bootstrap import DigiCoreBootstr
      retryDelayOnFailover: 100,
      maxRetriesPerRequest: 3,
    });
+
+   // Qdrant connection (using our HTTP wrapper)
+   import { QdrantHTTPClient } from "@pcs/typescript-sdk";
+
+   const qdrantClient = new QdrantHTTPClient({
+     host: process.env.QDRANT_HOST || "localhost",
+     port: parseInt(process.env.QDRANT_PORT || "6333"),
+     apiKey: process.env.QDRANT_API_KEY,
+     timeout: 30000,
+     maxRetries: 3,
+     retryDelay: 1000,
+   });
    ```
 
 2. **Create data access layer**
@@ -466,6 +478,57 @@ docker exec <app-container> python -c "from app.bootstrap import DigiCoreBootstr
          return result.rows[0] || null;
        } finally {
          client.release();
+       }
+     }
+   }
+
+   // Qdrant vector service example
+   class VectorService {
+     async storeDocument(document: VectorDocument): Promise<string> {
+       try {
+         const result = await qdrantClient.upsert(
+           collectionName: "app_knowledge",
+           points: [{
+             id: document.id,
+             vector: document.embedding,
+             payload: {
+               content: document.content,
+               metadata: document.metadata,
+               tenant_id: process.env.APP_TENANT_ID,
+               created_at: new Date().toISOString()
+             }
+           }]
+         );
+         return document.id;
+       } catch (error) {
+         throw new Error(`Failed to store document: ${error.message}`);
+       }
+     }
+
+     async searchSimilar(query: string, limit: number = 10): Promise<SearchResult[]> {
+       try {
+         // First get embedding from PCS or local embedding service
+         const embedding = await this.getEmbedding(query);
+
+         const results = await qdrantClient.search(
+           collectionName: "app_knowledge",
+           queryVector: embedding,
+           limit: limit,
+           filter: {
+             must: [
+               { key: "tenant_id", match: { value: process.env.APP_TENANT_ID } }
+             ]
+           }
+         );
+
+         return results.map(result => ({
+           id: result.id,
+           score: result.score,
+           content: result.payload.content,
+           metadata: result.payload.metadata
+         }));
+       } catch (error) {
+         throw new Error(`Search failed: ${error.message}`);
        }
      }
    }

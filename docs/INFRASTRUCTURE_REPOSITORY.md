@@ -443,6 +443,110 @@ services:
       - digi-net
 ```
 
+### Qdrant Connection Examples
+
+#### TypeScript/JavaScript Apps
+
+```typescript
+// Using our custom HTTP wrapper
+import { QdrantHTTPClient } from "@pcs/typescript-sdk";
+
+const qdrantClient = new QdrantHTTPClient({
+  host: "qdrant",  // Docker service name
+  port: 6333,      // HTTP API port
+  apiKey: process.env.QDRANT_API_KEY,
+  timeout: 30000,
+  maxRetries: 3,
+  retryDelay: 1000,
+});
+
+// Store document with tenant isolation
+await qdrantClient.upsert(
+  collectionName: "app_knowledge",
+  points: [{
+    id: "doc_123",
+    vector: embedding,
+    payload: {
+      content: "Document content",
+      tenant_id: process.env.APP_TENANT_ID,
+      app_name: process.env.APP_NAME,
+      created_at: new Date().toISOString()
+    }
+  }]
+);
+
+// Search with tenant filter
+const results = await qdrantClient.search(
+  collectionName: "app_knowledge",
+  queryVector: queryEmbedding,
+  limit: 10,
+  filter: {
+    must: [
+      { key: "tenant_id", match: { value: process.env.APP_TENANT_ID } }
+    ]
+  }
+);
+```
+
+#### Python Apps
+
+```python
+# Using our custom HTTP wrapper
+from pcs.repositories.qdrant_http_client import QdrantHTTPClient
+
+qdrant_client = QdrantHTTPClient(
+    host="qdrant",  # Docker service name
+    port=6333,      # HTTP API port
+    api_key=os.getenv("QDRANT_API_KEY"),
+    timeout=30.0,
+    max_retries=3,
+    retry_delay=1.0
+)
+
+# Store document
+await qdrant_client.upsert(
+    collection_name="app_knowledge",
+    points=[{
+        "id": "doc_123",
+        "vector": embedding,
+        "payload": {
+            "content": "Document content",
+            "tenant_id": os.getenv("APP_TENANT_ID"),
+            "app_name": os.getenv("APP_NAME"),
+            "created_at": datetime.now().isoformat()
+        }
+    }]
+)
+
+# Search documents
+results = await qdrant_client.search(
+    collection_name="app_knowledge",
+    query_vector=query_embedding,
+    limit=10,
+    query_filter={
+        "must": [
+            {"key": "tenant_id", "match": {"value": os.getenv("APP_TENANT_ID")}}
+        ]
+    }
+)
+```
+
+#### Environment Variables for Apps
+
+```bash
+# Required for Qdrant connection
+QDRANT_HOST=qdrant
+QDRANT_PORT=6333
+QDRANT_API_KEY=your_app_api_key
+
+# App identification for multi-tenancy
+APP_NAME=my_app
+APP_TENANT_ID=my_app_tenant
+
+# Collection naming
+QDRANT_COLLECTION_PREFIX=my_app
+```
+
 ## Monitoring
 
 - **Grafana**: http://localhost:3000 (admin/admin)

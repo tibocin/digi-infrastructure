@@ -351,6 +351,98 @@ async def database_health_check():
 - Per-app storage usage
 - Cross-app analytics
 
+## Qdrant Integration for Downstream Apps
+
+### Connection Configuration
+
+Each app connects to the shared Qdrant instance using environment variables:
+
+```bash
+# App-specific Qdrant configuration
+QDRANT_HOST=qdrant  # Docker service name
+QDRANT_PORT=6333    # HTTP API port
+QDRANT_GRPC_PORT=6334  # gRPC port (optional)
+QDRANT_API_KEY=your_app_api_key  # For authentication
+QDRANT_COLLECTION_PREFIX=app_name  # For collection naming
+```
+
+### Collection Naming Convention
+
+Apps use tenant-specific collection names to ensure data isolation:
+
+```typescript
+// Collection naming pattern
+const collectionName = `${process.env.QDRANT_COLLECTION_PREFIX}_${collectionType}`;
+
+// Examples:
+// - digi_core_knowledge
+// - lernmi_memories  
+// - beep_boop_conversations
+// - devao_analytics
+```
+
+### Multi-Tenant Data Isolation
+
+```typescript
+// Example: Store document with tenant isolation
+const document = {
+  id: "doc_123",
+  vector: embedding,
+  payload: {
+    content: "Document content",
+    tenant_id: process.env.APP_TENANT_ID,  // Critical for isolation
+    app_name: process.env.APP_NAME,
+    created_at: new Date().toISOString(),
+    metadata: {
+      type: "knowledge",
+      category: "technical"
+    }
+  }
+};
+
+// Search with tenant filter
+const results = await qdrantClient.search(
+  collectionName: "app_knowledge",
+  queryVector: queryEmbedding,
+  filter: {
+    must: [
+      { key: "tenant_id", match: { value: process.env.APP_TENANT_ID } }
+    ]
+  }
+);
+```
+
+### Health Check Implementation
+
+```typescript
+// Qdrant health check for apps
+async function checkQdrantHealth(): Promise<HealthStatus> {
+  try {
+    const collections = await qdrantClient.getCollections();
+    const appCollection = collections.find(c => 
+      c.name.startsWith(process.env.QDRANT_COLLECTION_PREFIX)
+    );
+    
+    if (appCollection) {
+      return { 
+        status: "healthy", 
+        message: `Qdrant connection OK, collection: ${appCollection.name}` 
+      };
+    } else {
+      return { 
+        status: "degraded", 
+        message: "Qdrant connected but app collection not found" 
+      };
+    }
+  } catch (error) {
+    return { 
+      status: "unhealthy", 
+      message: `Qdrant error: ${error.message}` 
+    };
+  }
+}
+```
+
 ## Migration Strategy
 
 ### Phase 1: Prepare Infrastructure

@@ -451,6 +451,113 @@ mockPCS.setResponse(
 );
 ```
 
+## Qdrant Integration
+
+### Vector Database Operations
+
+The PCS SDK includes Qdrant integration for vector operations:
+
+```typescript
+// Initialize Qdrant client through PCS SDK
+import { QdrantHTTPClient } from "@pcs/typescript-sdk";
+
+const qdrantClient = new QdrantHTTPClient({
+  host: process.env.QDRANT_HOST || "localhost",
+  port: parseInt(process.env.QDRANT_PORT || "6333"),
+  apiKey: process.env.QDRANT_API_KEY,
+  timeout: 30000,
+  maxRetries: 3,
+  retryDelay: 1000,
+});
+
+// Store embeddings with PCS context
+async function storeWithContext(content: string, context: any) {
+  // Get embedding from PCS
+  const embedding = await pcs.embeddings.generate({
+    text: content,
+    model: "text-embedding-3-small"
+  });
+
+  // Store in Qdrant with context
+  await qdrantClient.upsert(
+    collectionName: "knowledge_base",
+    points: [{
+      id: uuidv4(),
+      vector: embedding.vector,
+      payload: {
+        content,
+        context: JSON.stringify(context),
+        tenant_id: process.env.APP_TENANT_ID,
+        created_at: new Date().toISOString(),
+        pcs_session_id: context.sessionId
+      }
+    }]
+  );
+}
+
+// Semantic search with PCS context
+async function searchWithContext(query: string, context: any) {
+  // Generate query embedding
+  const queryEmbedding = await pcs.embeddings.generate({
+    text: query,
+    model: "text-embedding-3-small"
+  });
+
+  // Search Qdrant with context filter
+  const results = await qdrantClient.search(
+    collectionName: "knowledge_base",
+    queryVector: queryEmbedding.vector,
+    limit: 10,
+    filter: {
+      must: [
+        { key: "tenant_id", match: { value: process.env.APP_TENANT_ID } },
+        { key: "pcs_session_id", match: { value: context.sessionId } }
+      ]
+    }
+  );
+
+  return results.map(result => ({
+    id: result.id,
+    score: result.score,
+    content: result.payload.content,
+    context: JSON.parse(result.payload.context)
+  }));
+}
+```
+
+### Multi-Tenant Collection Management
+
+```typescript
+// Collection naming convention
+const getCollectionName = (appName: string, collectionType: string) => {
+  return `${appName}_${collectionType}`;
+};
+
+// Initialize app collections
+async function initializeAppCollections(appName: string) {
+  const collections = ["knowledge", "memories", "conversations", "analytics"];
+
+  for (const collectionType of collections) {
+    const collectionName = getCollectionName(appName, collectionType);
+
+    try {
+      await qdrantClient.createCollection(collectionName, {
+        vectorSize: 384,
+        distance: "Cosine",
+        onDiskPayload: true,
+      });
+      console.log(`Created collection: ${collectionName}`);
+    } catch (error) {
+      if (error.message.includes("already exists")) {
+        console.log(`Collection exists: ${collectionName}`);
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+```
+
 ## SDK Updates & Migration
 
 ### Version Compatibility
