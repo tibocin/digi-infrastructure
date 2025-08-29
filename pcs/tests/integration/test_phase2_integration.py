@@ -13,7 +13,7 @@ without depending on the main PCS application.
 
 import pytest
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, AsyncMock
 
 # Template Engine (isolated implementation)
@@ -86,7 +86,7 @@ class SimpleContextManager:
         """Store context data."""
         self.contexts[context_id] = {
             'data': data,
-            'created_at': datetime.utcnow(),
+            'created_at': datetime.now(timezone.utc),
             'ttl': ttl
         }
     
@@ -99,7 +99,7 @@ class SimpleContextManager:
         
         # Check TTL
         if context['ttl']:
-            if datetime.utcnow() - context['created_at'] > context['ttl']:
+            if datetime.now(timezone.utc) - context['created_at'] > context['ttl']:
                 del self.contexts[context_id]
                 return {}
         
@@ -124,7 +124,7 @@ class SimpleRepository:
         """Store a value."""
         self.storage[key] = {
             'value': value,
-            'created_at': datetime.utcnow(),
+            'created_at': datetime.now(timezone.utc),
             'ttl': ttl
         }
         return True
@@ -138,7 +138,7 @@ class SimpleRepository:
         
         # Check TTL
         if item['ttl']:
-            if datetime.utcnow() - item['created_at'] > item['ttl']:
+            if datetime.now(timezone.utc) - item['created_at'] > item['ttl']:
                 del self.storage[key]
                 return None
         
@@ -386,27 +386,27 @@ Device: desktop | Session: web"""
         test_data = {'large_data': list(range(1000))}
         
         # Store data
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         await self.repository.set(cache_key, test_data)
-        store_time = datetime.utcnow() - start_time
+        store_time = datetime.now(timezone.utc) - start_time
         
         # Retrieve data multiple times
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         for _ in range(10):
             retrieved = await self.repository.get(cache_key)
-        retrieval_time = datetime.utcnow() - start_time
+        retrieval_time = datetime.now(timezone.utc) - start_time
         
         assert retrieved == test_data
         # In a real implementation, retrieval should be faster than storage
         # For this mock, we just verify the operations work
         
         # Test context merging performance
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         for i in range(5):
             await self.context_manager.store_context(f'perf_test:{i}', {f'data_{i}': i})
         
         merged = await self.context_manager.merge_contexts([f'perf_test:{i}' for i in range(5)])
-        merge_time = datetime.utcnow() - start_time
+        merge_time = datetime.now(timezone.utc) - start_time
         
         assert len(merged) == 5  # Should have merged all contexts with unique keys
     

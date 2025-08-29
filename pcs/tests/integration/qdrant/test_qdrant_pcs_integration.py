@@ -6,9 +6,10 @@ Related Components: PCS, Qdrant, integration testing
 Tags: testing, integration, qdrant, pcs
 """
 
-import requests
+import httpx
 import json
 import time
+import asyncio
 
 def test_qdrant_direct():
     """Test direct Qdrant API access."""
@@ -16,7 +17,7 @@ def test_qdrant_direct():
     
     # Test Qdrant health
     try:
-        response = requests.get("http://localhost:6333/collections", 
+        response = httpx.get("http://localhost:6333/collections", 
                               headers={"api-key": "qd_0197b3371bcf3c99bfacb50d71c40b868a8a81bf6b9731a7965276f4c3f79814"})
         if response.status_code == 200:
             print("✅ Qdrant API accessible")
@@ -36,7 +37,7 @@ def test_pcs_health():
     print("\n🔍 Testing PCS health...")
     
     try:
-        response = requests.get("http://localhost:8000/api/v1/health/")
+        response = httpx.get("http://localhost:8000/api/v1/health/")
         if response.status_code == 200:
             print("✅ PCS health check passed")
             health_data = response.json()
@@ -66,7 +67,7 @@ def test_qdrant_collection_creation():
             }
         }
         
-        response = requests.put(
+        response = httpx.put(
             f"http://localhost:6333/collections/{collection_name}",
             headers={
                 "api-key": "qd_0197b3371bcf3c99bfacb50d71c40b868a8a81bf6b9731a7965276f4c3f79814",
@@ -88,7 +89,7 @@ def test_qdrant_collection_creation():
     
     # Verify collection exists
     try:
-        response = requests.get(
+        response = httpx.get(
             f"http://localhost:6333/collections/{collection_name}",
             headers={"api-key": "qd_0197b3371bcf3c99bfacb50d71c40b868a8a81bf6b9731a7965276f4c3f79814"}
         )
@@ -107,7 +108,7 @@ def test_qdrant_collection_creation():
     
     # Clean up test collection
     try:
-        response = requests.delete(
+        response = httpx.delete(
             f"http://localhost:6333/collections/{collection_name}",
             headers={"api-key": "qd_0197b3371bcf3c99bfacb50d71c40b868a8a81bf6b9731a7965276f4c3f79814"}
         )

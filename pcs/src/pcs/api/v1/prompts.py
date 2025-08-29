@@ -13,6 +13,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 from ...core.exceptions import PCSError, ValidationError
@@ -541,7 +542,8 @@ async def create_prompt_version(
                 detail=f"Template with ID {template_id} not found"
             )
         
-        # Get next version number
+        # For now, use a simple approach: increment from template version count
+        # In a production environment, this would query the actual versions
         next_version = template.version_count + 1
         
         # Create version
@@ -565,7 +567,21 @@ async def create_prompt_version(
         # Update template version count
         await template_repo.update(template_id, {"version_count": next_version})
         
-        return PromptVersionResponse.model_validate(created_version)
+        # Create response with proper variable mapping
+        # The database stores variable names as a list, but response expects full variable definitions
+        response_data = {
+            "id": created_version.id,
+            "template_id": created_version.template_id,
+            "version_number": created_version.version_number,
+            "content": created_version.template,  # Map 'template' back to 'content'
+            "variables": version_data.variables,  # Use original variable definitions from request
+            "changelog": created_version.change_notes,  # Map 'change_notes' back to 'changelog'
+            "is_active": created_version.is_active,
+            "created_at": created_version.created_at,
+            "updated_at": created_version.updated_at
+        }
+        
+        return PromptVersionResponse(**response_data)
     
     except HTTPException:
         raise
@@ -594,7 +610,27 @@ async def list_prompt_versions(
                 detail=f"Template with ID {template_id} not found"
             )
         
-        return [PromptVersionResponse.model_validate(v) for v in template.versions]
+        # Map database models to response models with proper variable handling
+        versions_response = []
+        for v in template.versions:
+            # Convert stored variable names back to a simple dict format
+            # Since we don't have the original variable definitions, we'll create a basic structure
+            variables_dict = {var_name: {"type": "string", "required": True} for var_name in (v.variables or [])}
+            
+            response_data = {
+                "id": v.id,
+                "template_id": v.template_id,
+                "version_number": v.version_number,
+                "content": v.template,  # Map 'template' back to 'content'
+                "variables": variables_dict,
+                "changelog": v.change_notes,  # Map 'change_notes' back to 'changelog'
+                "is_active": v.is_active,
+                "created_at": v.created_at,
+                "updated_at": v.updated_at
+            }
+            versions_response.append(PromptVersionResponse(**response_data))
+        
+        return versions_response
     
     except HTTPException:
         raise
