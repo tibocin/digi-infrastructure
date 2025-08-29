@@ -62,7 +62,7 @@ def mock_qdrant_client():
             payload={
                 "content": "Document 1",
                 "tenant_id": "tenant1",
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "type": "text"
             },
             vector=[0.1, 0.2, 0.3]
@@ -74,7 +74,7 @@ def mock_qdrant_client():
             payload={
                 "content": "Document 2",
                 "tenant_id": "tenant1",
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "type": "text"
             },
             vector=[0.4, 0.5, 0.6]
@@ -89,7 +89,7 @@ def mock_qdrant_client():
             payload={
                 "content": "Document 1",
                 "tenant_id": "tenant1",
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "type": "text"
             }
         ),
@@ -99,7 +99,7 @@ def mock_qdrant_client():
             payload={
                 "content": "Document 2",
                 "tenant_id": "tenant2",
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "type": "text"
             }
         )
@@ -151,7 +151,7 @@ def async_repository():
             payload={
                 "content": "Document 1",
                 "tenant_id": "tenant1",
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "type": "text"
             },
             vector=[0.1, 0.2, 0.3]
@@ -182,7 +182,7 @@ def sample_vector_documents():
             content="This is document 1",
             embedding=[0.1, 0.2, 0.3, 0.4],
             metadata={"type": "text", "category": "sample"},
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
             collection_name="test_collection",
             tenant_id="tenant1"
         ),
@@ -191,7 +191,7 @@ def sample_vector_documents():
             content="This is document 2",
             embedding=[0.5, 0.6, 0.7, 0.8],
             metadata={"type": "text", "category": "example"},
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
             collection_name="test_collection",
             tenant_id="tenant1"
         ),
@@ -200,7 +200,7 @@ def sample_vector_documents():
             content="This is document 3",
             embedding=[0.9, 1.0, 1.1, 1.2],
             metadata={"type": "text", "category": "demo"},
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
             collection_name="test_collection",
             tenant_id="tenant2"
         )
@@ -248,10 +248,10 @@ class TestEnhancedQdrantRepository:
         )
         
         with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
-            result = await repository.create_collection_optimized(
+            result = await repository.create_collection(
                 collection_name=config.name,
                 vector_size=config.vector_size,
-                distance=config.distance.value,
+                distance=config.distance,
                 hnsw_config=config.hnsw_config,
                 optimizers_config=config.optimizers_config
             )
@@ -471,12 +471,12 @@ class TestEnhancedQdrantRepository:
         """Test result reranking with metadata boosting."""
         doc1 = VectorDocument(
             id="doc1", content="Doc 1", embedding=[0.1], 
-            metadata={"priority": "high"}, created_at=datetime.utcnow(), 
+            metadata={"priority": "high"}, created_at=datetime.now(UTC), 
             collection_name="test", tenant_id="tenant1"
         )
         doc2 = VectorDocument(
             id="doc2", content="Doc 2", embedding=[0.2], 
-            metadata={"recent": True}, created_at=datetime.utcnow(), 
+            metadata={"recent": True}, created_at=datetime.now(UTC), 
             collection_name="test", tenant_id="tenant1"
         )
         
@@ -534,7 +534,7 @@ class TestVectorDocument:
 
     def test_vector_document_creation(self):
         """Test VectorDocument creation and to_dict method."""
-        created_at = datetime.utcnow()
+        created_at = datetime.now(UTC)
         doc = VectorDocument(
             id="test_id",
             content="Test content",
@@ -568,7 +568,7 @@ class TestVectorDocument:
             content="Test content",
             embedding=[0.1, 0.2, 0.3],
             metadata={"type": "test", "category": "sample"},
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
             collection_name="test_collection",
             tenant_id="tenant1"
         )
@@ -667,6 +667,9 @@ class TestQdrantCollectionConfig:
         assert config.distance == QdrantDistance.COSINE
         assert config.hnsw_config is None
         assert config.optimizers_config is None
+        assert config.quantization_config is None
+        assert config.replication_factor is None
+        assert config.write_consistency_factor is None
         assert config.on_disk_payload is True
 
     def test_qdrant_collection_config_custom(self):
@@ -677,6 +680,9 @@ class TestQdrantCollectionConfig:
             distance=QdrantDistance.EUCLIDEAN,
             hnsw_config={"m": 32, "ef_construct": 200},
             optimizers_config={"deleted_threshold": 0.1},
+            quantization_config={"type": "product", "compression": 8},
+            replication_factor=2,
+            write_consistency_factor=1,
             on_disk_payload=False
         )
         
@@ -685,6 +691,9 @@ class TestQdrantCollectionConfig:
         assert config.distance == QdrantDistance.EUCLIDEAN
         assert config.hnsw_config == {"m": 32, "ef_construct": 200}
         assert config.optimizers_config == {"deleted_threshold": 0.1}
+        assert config.quantization_config == {"type": "product", "compression": 8}
+        assert config.replication_factor == 2
+        assert config.write_consistency_factor == 1
         assert config.on_disk_payload is False
 
 
@@ -853,14 +862,10 @@ class TestErrorHandling:
         """Test error handling in collection creation."""
         mock_qdrant_client.create_collection.side_effect = Exception("Creation failed")
         
-        config = QdrantCollectionConfig(name="test_collection", vector_size=384, distance=QdrantDistance.COSINE)
+        config = QdrantCollectionConfig(name="test_collection", vector_size=384)
         
         with pytest.raises(RepositoryError, match="Failed to create optimized collection"):
-            await repository.create_collection_optimized(
-                collection_name=config.name,
-                vector_size=config.vector_size,
-                distance=config.distance.value
-            )
+            await repository.create_collection_optimized(config)
 
     @pytest.mark.asyncio
     async def test_bulk_upsert_error(self, repository, mock_qdrant_client, sample_vector_documents):
@@ -1006,8 +1011,4 @@ class TestAsyncRepository:
             )
         
         assert result is True
-<<<<<<< Current (Your changes)
-        async_repository.client.create_collection.assert_called_once()
-=======
         async_repository.client.create_collection_async.assert_called_once()
->>>>>>> Incoming (Background Agent changes)
