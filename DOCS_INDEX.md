@@ -26,7 +26,7 @@ Welcome to the central entry point for all Digi Infrastructure documentation. Th
 
 ## Infrastructure
 
-- [Infrastructure Repository](./docs/INFRASTRUCTURE_REPOSITORY.md) - Details of the shared infrastructure repository, components, and docker-compose configuration.
+- [Infrastructure Repository](./docs/INFRASTRUCTURE_REPOSITORY.md) - Details of the shared infrastructure repository, components, and docker-compose configuration with Qdrant connection examples.
 - [Qdrant Infrastructure](./docs/QDRANT_INFRASTRUCTURE.md) - Comprehensive Qdrant vector database configuration, performance optimization, and multi-tenant deployment.
 - [Tenant Qdrant Integration](./docs/TENANT_QDRANT_INTEGRATION.md) - Multi-tenant Qdrant integration patterns, collection management, and isolation strategies.
 
@@ -37,6 +37,11 @@ Welcome to the central entry point for all Digi Infrastructure documentation. Th
 ## Core Architecture
 
 - [Dynamic Prompting Architecture](./docs/DYNAMIC_PROMPTING_ARCHITECTURE.md) - Overview of the dynamic prompting layer, PCS components, and service architecture.
+
+## Downstream App Integration
+
+- [App Onboarding Guide](./docs/APP_ONBOARDING.md) - Complete guide for apps to connect to digi-infrastructure including Qdrant integration examples.
+- [Multi-App Deployment](./docs/MULTI_APP_DEPLOYMENT.md) - Multi-tenant deployment patterns with Qdrant collection management and isolation strategies.
 
 ---
 
