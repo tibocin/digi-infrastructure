@@ -17,8 +17,8 @@ services:
       - PCS_REDIS_HOST=redis
       - PCS_REDIS_PORT=6379
       - PCS_REDIS_DB=0
-      - PCS_CHROMA_HOST=chroma
-      - PCS_CHROMA_PORT=8001
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
       - PCS_NEO4J_URI=bolt://neo4j:7687
       - PCS_NEO4J_USER=neo4j
       - PCS_NEO4J_PASSWORD=${NEO4J_PASSWORD}
@@ -30,14 +30,14 @@ services:
     depends_on:
       - postgres
       - redis
-      - chroma
+      - qdrant
       - neo4j
     networks:
       - digi-net
     external_links:
       - digi-infrastructure_postgres_1:postgres
       - digi-infrastructure_redis_1:redis
-      - digi-infrastructure_chroma_1:chroma
+      - digi-infrastructure_qdrant_1:qdrant
       - digi-infrastructure_neo4j_1:neo4j
     restart: unless-stopped
     healthcheck:

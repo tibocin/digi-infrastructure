@@ -155,7 +155,7 @@ npm init -y
 
 # Install core dependencies
 npm install @pcs/typescript-sdk @langchain/langgraph
-npm install pg chromadb neo4j-driver redis
+npm install pg qdrant-client neo4j-driver redis
 npm install @types/node typescript ts-node
 npm install dotenv uuid
 
@@ -200,8 +200,8 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=your_redis_password
 
-# ChromaDB Configuration (for knowledge base)
-CHROMA_URL=http://localhost:8001
+# Qdrant Configuration (for knowledge base)
+QDRANT_URL=http://localhost:6333
 
 # Ollama Configuration
 OLLAMA_BASE_URL=http://localhost:11434

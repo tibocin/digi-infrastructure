@@ -6,7 +6,7 @@ Shared infrastructure foundation for the Digi ecosystem, including database serv
 
 This repository serves as the foundation for the entire Digi ecosystem, providing:
 
-- **Shared Database Infrastructure**: PostgreSQL, Neo4j, ChromaDB, Redis
+- **Shared Database Infrastructure**: PostgreSQL, Neo4j, Qdrant, Redis
 - **Dynamic Prompting Architecture**: Prompt and Context Service (PCS) with intelligent context management
 - **Monitoring & Observability**: Prometheus, Grafana, and comprehensive health checks
 - **App Onboarding & Integration**: Complete SDK and onboarding processes for new applications
@@ -19,7 +19,7 @@ This repository serves as the foundation for the entire Digi ecosystem, providin
 │                    Shared Infrastructure                    │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
-│  │  PostgreSQL │  │    Neo4j    │  │   ChromaDB  │          │
+│  │  PostgreSQL │  │    Neo4j    │  │    Qdrant   │          │
 │  │   Container │  │  Container  │  │  Container  │          │
 │  └─────────────┘  └─────────────┘  └─────────────┘          │
 │         │                │                │                 │
@@ -64,7 +64,7 @@ This repository serves as the foundation for the entire Digi ecosystem, providin
 | ---------- | -------- | ---------------------------- | ------------------------------------------ |
 | PostgreSQL | 5432     | Relational database          | `postgresql://user:pass@localhost:5432/db` |
 | Neo4j      | 7474     | Graph database               | `http://localhost:7474`                    |
-| ChromaDB   | 8001     | Vector database              | `http://localhost:8001`                    |
+| Qdrant     | 6333     | Vector database              | `http://localhost:6333`                    |
 | Redis      | 6379     | Cache & sessions             | `redis://localhost:6379`                   |
 | **PCS**    | **8000** | **Prompt & Context Service** | **`http://localhost:8000`**                |
 | Prometheus | 9090     | Metrics collection           | `http://localhost:9090`                    |
@@ -130,7 +130,7 @@ services:
     external_links:
       - digi-infrastructure_postgres_1:postgres
       - digi-infrastructure_neo4j_1:neo4j
-      - digi-infrastructure_chroma_1:chroma
+      - digi-infrastructure_qdrant_1:qdrant
       - digi-infrastructure_redis_1:redis
     networks:
       - digi-net
@@ -141,7 +141,7 @@ services:
 - **Grafana**: http://localhost:3000 (admin/admin)
 - **Prometheus**: http://localhost:9090
 - **Neo4j Browser**: http://localhost:7474
-- **ChromaDB**: http://localhost:8001
+- **Qdrant**: http://localhost:6333
 
 ## Documentation
 

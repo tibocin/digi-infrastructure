@@ -1,7 +1,7 @@
 """
 Filepath: src/pcs/core/connection_pool_manager.py
 Purpose: Unified connection pool optimization and management across all databases
-Related Components: DatabaseManager, Redis, Neo4j, ChromaDB, Performance monitoring
+Related Components: DatabaseManager, Redis, Neo4j, Qdrant, Performance monitoring
 Tags: connection-pool, optimization, circuit-breaker, monitoring, performance
 """
 

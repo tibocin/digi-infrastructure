@@ -2,14 +2,14 @@
 
 ## Overview
 
-This document explains how multiple applications can share the same database instances (PostgreSQL, Neo4j, ChromaDB, Redis) while maintaining data isolation and security.
+This document explains how multiple applications can share the same database instances (PostgreSQL, Neo4j, Qdrant, Redis) while maintaining data isolation and security.
 
 ## Current Architecture
 
 Your current setup uses a **single-tenant architecture** where:
 
 - One `digi-core-app` container
-- One set of database containers (postgres, neo4j, chroma, redis)
+- One set of database containers (postgres, neo4j, qdrant, redis)
 - All data belongs to the `digi_core` application
 
 ## Multi-App Architecture Options
@@ -23,7 +23,7 @@ Your current setup uses a **single-tenant architecture** where:
 │                    Shared Infrastructure                   │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │
-│  │  PostgreSQL │  │    Neo4j    │  │   ChromaDB  │      │
+│  │  PostgreSQL │  │    Neo4j    │  │    Qdrant   │      │
 │  │   Container │  │  Container  │  │  Container  │      │
 │  └─────────────┘  └─────────────┘  └─────────────┘      │
 │         │                │                │              │
@@ -47,7 +47,7 @@ Your current setup uses a **single-tenant architecture** where:
 │  │ digi-core   │  │   lernmi    │  │  beep_boop  │      │
 │  │ PostgreSQL  │  │ PostgreSQL  │  │ PostgreSQL  │      │
 │  │   Neo4j     │  │   Neo4j     │  │   Neo4j     │      │
-│  │  ChromaDB   │  │  ChromaDB   │  │  ChromaDB   │      │
+│  │   Qdrant    │  │   Qdrant    │  │   Qdrant    │      │
 │  │    Redis    │  │    Redis    │  │    Redis    │      │
 │  └─────────────┘  └─────────────┘  └─────────────┘      │
 └─────────────────────────────────────────────────────────────┘
@@ -111,13 +111,13 @@ NEO4J_DATABASE_BEEP_BOOP="beep_boop"
 - `lernmi` database → lernmi graph data
 - `beep_boop` database → beep-boop graph data
 
-#### 3. ChromaDB Multi-Collection Setup
+#### 3. Qdrant Multi-Collection Setup
 
 ```yaml
 # Environment variables
-CHROMA_COLLECTION_DIGI_CORE="digi_core_knowledge"
-CHROMA_COLLECTION_LERNMI="lernmi_knowledge"
-CHROMA_COLLECTION_BEEP_BOOP="beep_boop_knowledge"
+QDRANT_COLLECTION_DIGI_CORE="digi_core_knowledge"
+QDRANT_COLLECTION_LERNMI="lernmi_knowledge"
+QDRANT_COLLECTION_BEEP_BOOP="beep_boop_knowledge"
 ```
 
 **Collection Structure**:
@@ -154,22 +154,22 @@ services:
     # ... configuration
   neo4j:
     # ... configuration
-  chroma:
+  qdrant:
     # ... configuration
   redis:
     # ... configuration
 
   # App containers
   digi-core-app:
-    depends_on: [postgres, neo4j, chroma, redis]
+    depends_on: [postgres, neo4j, qdrant, redis]
     # ... configuration
 
   lernmi-app:
-    depends_on: [postgres, neo4j, chroma, redis]
+    depends_on: [postgres, neo4j, qdrant, redis]
     # ... configuration
 
   beep-boop-app:
-    depends_on: [postgres, neo4j, chroma, redis]
+    depends_on: [postgres, neo4j, qdrant, redis]
     # ... configuration
 ```
 
@@ -194,19 +194,19 @@ services:
 # digi-core/docker-compose.yml
 services:
   digi-core-app:
-    depends_on: [postgres, neo4j, chroma, redis]
+    depends_on: [postgres, neo4j, qdrant, redis]
     # ... configuration
 
 # lernmi/docker-compose.yml
 services:
   lernmi-app:
-    depends_on: [postgres, neo4j, chroma, redis]
+    depends_on: [postgres, neo4j, qdrant, redis]
     # ... configuration
 
 # beep-boop/docker-compose.yml
 services:
   beep-boop-app:
-    depends_on: [postgres, neo4j, chroma, redis]
+    depends_on: [postgres, neo4j, qdrant, redis]
     # ... configuration
 ```
 
@@ -234,7 +234,7 @@ services:
     # ... configuration
   neo4j:
     # ... configuration
-  chroma:
+  qdrant:
     # ... configuration
   redis:
     # ... configuration
@@ -245,7 +245,7 @@ services:
     external_links:
       - infrastructure_postgres_1:postgres
       - infrastructure_neo4j_1:neo4j
-      - infrastructure_chroma_1:chroma
+      - infrastructure_qdrant_1:qdrant
       - infrastructure_redis_1:redis
     # ... configuration
 ```
@@ -256,7 +256,7 @@ services:
 
 1. **PostgreSQL**: Use the `init-multiple-databases.sh` script
 2. **Neo4j**: Create databases on first connection
-3. **ChromaDB**: Use different collection names
+3. **Qdrant**: Use different collection names
 4. **Redis**: Use different database numbers
 
 ### Step 2: Update Application Code
@@ -289,7 +289,7 @@ BEEP_BOOP_DB_URL="postgresql://beep_boop_user:beep_boop_pass@postgres:5432/beep_
 
 - **PostgreSQL**: Separate databases with different users
 - **Neo4j**: Separate databases with role-based access
-- **ChromaDB**: Separate collections with metadata filtering
+- **Qdrant**: Separate collections with metadata filtering
 - **Redis**: Separate database numbers
 
 ### 2. Network Security
@@ -313,12 +313,12 @@ backup-sidecar:
   depends_on:
     - postgres
     - neo4j
-    - chroma
+    - qdrant
     - redis
   volumes:
     - pg_data:/backup/pg_data:ro
     - neo4j_data:/backup/neo4j_data:ro
-    - chroma_data:/backup/chroma_data:ro
+    - qdrant_data:/backup/qdrant_data:ro
     - redis_data:/backup/redis_data:ro
 ```
 
@@ -326,7 +326,7 @@ backup-sidecar:
 
 1. **PostgreSQL**: Backup all databases
 2. **Neo4j**: Backup all databases
-3. **ChromaDB**: Backup all collections
+3. **Qdrant**: Backup all collections
 4. **Redis**: Backup all databases
 
 ## Monitoring and Observability

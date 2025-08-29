@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository contains the shared database infrastructure for the Digi ecosystem. It provides PostgreSQL, Neo4j, ChromaDB, Redis, and monitoring services that multiple applications can connect to.
+This repository contains the shared database infrastructure for the Digi ecosystem. It provides PostgreSQL, Neo4j, Qdrant, Redis, and monitoring services that multiple applications can connect to.
 
 ## Repository Structure
 
@@ -40,7 +40,7 @@ digi-infrastructure/
 
 - **PostgreSQL**: Multi-database setup for different apps
 - **Neo4j**: Graph database with multi-database support
-- **ChromaDB**: Vector database with multi-collection support
+- **Qdrant**: Vector database with multi-collection support
 - **Redis**: Cache with multi-database support
 
 ### Monitoring Services
@@ -64,7 +64,7 @@ Each app gets its own:
 
 - PostgreSQL database
 - Neo4j database
-- ChromaDB collection
+- Qdrant collection
 - Redis database number
 
 ## Quick Start
@@ -96,7 +96,7 @@ services:
     external_links:
       - digi-infrastructure_postgres_1:postgres
       - digi-infrastructure_neo4j_1:neo4j
-      - digi-infrastructure_chroma_1:chroma
+      - digi-infrastructure_qdrant_1:qdrant
       - digi-infrastructure_redis_1:redis
     networks:
       - digi-net
@@ -160,7 +160,7 @@ make monitor     # Open monitoring interfaces
 - **Grafana**: http://localhost:3000 (admin/admin)
 - **Prometheus**: http://localhost:9090
 - **Neo4j Browser**: http://localhost:7474
-- **ChromaDB**: http://localhost:8001
+- **Qdrant**: http://localhost:6333
 
 ## Next Steps
 
@@ -170,5 +170,3 @@ make monitor     # Open monitoring interfaces
 4. **Monitor and maintain**: Use provided monitoring tools
 
 This infrastructure provides a solid foundation for the multi-app Digi ecosystem!
-
-

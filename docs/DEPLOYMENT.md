@@ -63,7 +63,7 @@ services:
     external_links:
       - digi-infrastructure_postgres_1:postgres
       - digi-infrastructure_neo4j_1:neo4j
-      - digi-infrastructure_chroma_1:chroma
+      - digi-infrastructure_qdrant_1:qdrant
       - digi-infrastructure_redis_1:redis
     networks:
       - digi-net
@@ -74,7 +74,7 @@ services:
 - **Grafana**: http://localhost:3000 (admin/admin)
 - **Prometheus**: http://localhost:9090
 - **Neo4j Browser**: http://localhost:7474
-- **ChromaDB**: http://localhost:8001
+- **Qdrant**: http://localhost:6333
 
 ## Troubleshooting
 
@@ -189,5 +189,3 @@ docker-compose exec backup-sidecar restic restore <snapshot-id> --target /restor
 2. **Database connection issues**: Verify credentials in `.env`
 3. **Performance issues**: Monitor resource usage
 4. **Backup failures**: Check AWS credentials and permissions
-
-

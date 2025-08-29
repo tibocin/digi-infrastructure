@@ -23,7 +23,7 @@ Beep-Boop is a personal AI assistant that creates a deep understanding of its us
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
 │   User Input    │  │   Beep-Boop     │  │   Personal RAG  │
 │ (Text/Voice/    │──┤   Agent Core    │──┤   Database      │
-│  Image/Code)    │  │                 │  │  (ChromaDB)     │
+│  Image/Code)    │  │                 │  │   (Qdrant)      │
 └─────────────────┘  └─────────────────┘  └─────────────────┘
                               │
                      ┌─────────────────┐
@@ -59,7 +59,7 @@ mkdir beep-boop-agent && cd beep-boop-agent
 npm init -y
 
 # Install dependencies
-npm install @pcs/typescript-sdk pg chromadb neo4j-driver
+npm install @pcs/typescript-sdk pg qdrant-client neo4j-driver
 npm install @types/node @types/pg typescript ts-node
 npm install dotenv uuid multer sharp
 
@@ -93,9 +93,9 @@ NEO4J_URI=bolt://localhost:7687
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=your_neo4j_password
 
-# ChromaDB Configuration
-CHROMA_URL=http://localhost:8001
-CHROMA_API_KEY=your_chroma_key
+# Qdrant Configuration
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=your_qdrant_key
 
 # Ollama Configuration
 OLLAMA_BASE_URL=http://localhost:11434
@@ -174,7 +174,7 @@ CREATE TABLE beep_boop.user_memories (
     source_conversation_id UUID,
     source_message_id UUID,
     tags TEXT[],
-    embedding_id VARCHAR(255), -- Reference to ChromaDB
+    embedding_id VARCHAR(255), -- Reference to Qdrant
     verified BOOLEAN DEFAULT FALSE, -- has this been confirmed by user
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     last_referenced TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -807,7 +807,7 @@ Format as JSON:
 // src/agents/beep-boop-agent.ts
 import { PCSClient } from "@pcs/typescript-sdk";
 import { Pool, PoolClient } from "pg";
-import { ChromaApi, OpenAIEmbeddingFunction } from "chromadb";
+import { QdrantClient } from "qdrant-client";
 import neo4j, { Driver, Session } from "neo4j-driver";
 import { v4 as uuidv4 } from "uuid";
 import { beepBoopPrompts } from "../prompts/beep-boop-prompts";
@@ -823,10 +823,10 @@ import {
 export class BeepBoopAgent {
   private pcs: PCSClient;
   private postgres: Pool;
-  private chroma: ChromaApi;
+  private qdrant: QdrantClient;
   private neo4j: Driver;
   private userId: string;
-  private embeddingFunction: OpenAIEmbeddingFunction;
+  private embeddingFunction: any; // OpenAI embedding function
   private isInitialized: boolean = false;
 
   constructor(config: {

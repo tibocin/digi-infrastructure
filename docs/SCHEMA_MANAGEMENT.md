@@ -199,11 +199,17 @@ services:
     networks:
       - digi-net
 
-  chroma:
-    image: chromadb/chroma:1.0.15
-    container_name: digi-chroma
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: digi-qdrant
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__STORAGE__STORAGE_PATH: /qdrant/storage
+      QDRANT__STORAGE__SNAPSHOTS_PATH: /qdrant/snapshots
     volumes:
-      - chroma_data:/chroma/chroma
+      - qdrant_data:/qdrant/storage
+      - qdrant_snapshots:/qdrant/snapshots
     networks:
       - digi-net
 
@@ -233,7 +239,7 @@ services:
     external_links:
       - digi-infrastructure_postgres_1:postgres
       - digi-infrastructure_neo4j_1:neo4j
-      - digi-infrastructure_chroma_1:chroma
+      - digi-infrastructure_qdrant_1:qdrant
       - digi-infrastructure_redis_1:redis
     networks:
       - digi-net

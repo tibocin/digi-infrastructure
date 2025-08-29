@@ -54,21 +54,25 @@ LERNMI is a reinforcement learning system that improves its performance through 
 ### Learning Paradigms
 
 #### 1. **Imitation Learning**
+
 - Learn from Beep-Boop's successful interactions
 - Copy high-performance response patterns
 - Adapt communication styles and problem-solving approaches
 
 #### 2. **Reinforcement Learning**
+
 - Receive rewards for successful interactions
 - Learn optimal policies through trial and error
 - Explore new strategies while exploiting known good ones
 
 #### 3. **Meta-Learning**
+
 - Learn how to learn more efficiently
 - Adapt quickly to new tasks and domains
 - Transfer knowledge across different interaction contexts
 
 #### 4. **Active Learning**
+
 - Identify areas where more training is needed
 - Request specific feedback on uncertain decisions
 - Optimize data collection for maximum learning impact
@@ -85,7 +89,7 @@ mkdir lernmi-rl-agent && cd lernmi-rl-agent
 npm init -y
 
 # Install core dependencies
-npm install @pcs/typescript-sdk pg chromadb redis
+npm install @pcs/typescript-sdk pg qdrant-client redis
 npm install @types/node typescript ts-node
 npm install dotenv uuid mathjs
 
@@ -124,8 +128,8 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=your_redis_password
 
-# ChromaDB Configuration (for memory storage)
-CHROMA_URL=http://localhost:8001
+# Qdrant Configuration (for memory storage)
+QDRANT_URL=http://localhost:6333
 
 # Ollama Configuration
 OLLAMA_BASE_URL=http://localhost:11434
@@ -357,24 +361,24 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_reward_configurations_updated_at 
-    BEFORE UPDATE ON lernmi.reward_configurations 
+CREATE TRIGGER update_reward_configurations_updated_at
+    BEFORE UPDATE ON lernmi.reward_configurations
     FOR EACH ROW EXECUTE FUNCTION lernmi.update_updated_at_column();
 
-CREATE TRIGGER update_learning_objectives_updated_at 
-    BEFORE UPDATE ON lernmi.learning_objectives 
+CREATE TRIGGER update_learning_objectives_updated_at
+    BEFORE UPDATE ON lernmi.learning_objectives
     FOR EACH ROW EXECUTE FUNCTION lernmi.update_updated_at_column();
 
-CREATE TRIGGER update_training_schedules_updated_at 
-    BEFORE UPDATE ON lernmi.training_schedules 
+CREATE TRIGGER update_training_schedules_updated_at
+    BEFORE UPDATE ON lernmi.training_schedules
     FOR EACH ROW EXECUTE FUNCTION lernmi.update_updated_at_column();
 
 -- Function to update experience buffer sampling
 CREATE OR REPLACE FUNCTION lernmi.update_experience_sampled()
 RETURNS TRIGGER AS $$
 BEGIN
-    UPDATE lernmi.experience_buffer 
-    SET last_sampled_at = NOW() 
+    UPDATE lernmi.experience_buffer
+    SET last_sampled_at = NOW()
     WHERE id = NEW.id;
     RETURN NEW;
 END;
@@ -387,38 +391,38 @@ $$ language 'plpgsql';
 
 ```typescript
 // src/agents/lernmi-agent.ts
-import { PCSClient } from '@pcs/typescript-sdk';
-import { Pool, PoolClient } from 'pg';
-import { createClient } from 'redis';
-import * as tf from '@tensorflow/tfjs-node';
-import { v4 as uuidv4 } from 'uuid';
-import { 
-  Episode, 
-  EpisodeStep, 
-  ExperienceBuffer, 
+import { PCSClient } from "@pcs/typescript-sdk";
+import { Pool, PoolClient } from "pg";
+import { createClient } from "redis";
+import * as tf from "@tensorflow/tfjs-node";
+import { v4 as uuidv4 } from "uuid";
+import {
+  Episode,
+  EpisodeStep,
+  ExperienceBuffer,
   RewardSignal,
   LearningObjective,
-  PerformanceMetrics 
-} from '../types/lernmi-types';
+  PerformanceMetrics,
+} from "../types/lernmi-types";
 
 export class LernmiAgent {
   private pcs: PCSClient;
   private postgres: Pool;
   private redis: any;
   private beepBoopClient: any;
-  
+
   // Learning components
   private policyNetwork: tf.LayersModel;
   private valueNetwork: tf.LayersModel;
   private experienceBuffer: ExperienceBuffer;
   private rewardSystem: RewardSystem;
-  
+
   // Training state
   private currentEpisode?: Episode;
   private learningRate: number;
   private explorationRate: number;
   private isTraining: boolean = false;
-  
+
   // Performance tracking
   private performanceHistory: PerformanceMetrics[] = [];
   private learningObjectives: LearningObjective[] = [];
@@ -439,10 +443,10 @@ export class LernmiAgent {
     this.pcs = new PCSClient(config.pcsConfig);
     this.postgres = new Pool(config.postgresConfig);
     this.redis = createClient(config.redisConfig);
-    
+
     this.learningRate = config.learningConfig.learningRate;
     this.explorationRate = config.learningConfig.explorationRate;
-    
+
     this.initializeNeuralNetworks();
     this.initializeExperienceBuffer(config.learningConfig);
     this.initializeRewardSystem();
@@ -452,61 +456,61 @@ export class LernmiAgent {
     // Policy Network (Actor)
     this.policyNetwork = tf.sequential({
       layers: [
-        tf.layers.dense({ 
+        tf.layers.dense({
           inputShape: [128], // state representation size
-          units: 256, 
-          activation: 'relu',
-          name: 'policy_hidden_1'
+          units: 256,
+          activation: "relu",
+          name: "policy_hidden_1",
         }),
         tf.layers.dropout({ rate: 0.2 }),
-        tf.layers.dense({ 
-          units: 128, 
-          activation: 'relu',
-          name: 'policy_hidden_2'
+        tf.layers.dense({
+          units: 128,
+          activation: "relu",
+          name: "policy_hidden_2",
         }),
         tf.layers.dropout({ rate: 0.1 }),
-        tf.layers.dense({ 
+        tf.layers.dense({
           units: 64, // action space size
-          activation: 'softmax',
-          name: 'policy_output'
-        })
-      ]
+          activation: "softmax",
+          name: "policy_output",
+        }),
+      ],
     });
 
     // Value Network (Critic)
     this.valueNetwork = tf.sequential({
       layers: [
-        tf.layers.dense({ 
-          inputShape: [128], 
-          units: 256, 
-          activation: 'relu',
-          name: 'value_hidden_1'
+        tf.layers.dense({
+          inputShape: [128],
+          units: 256,
+          activation: "relu",
+          name: "value_hidden_1",
         }),
         tf.layers.dropout({ rate: 0.2 }),
-        tf.layers.dense({ 
-          units: 128, 
-          activation: 'relu',
-          name: 'value_hidden_2'
+        tf.layers.dense({
+          units: 128,
+          activation: "relu",
+          name: "value_hidden_2",
         }),
-        tf.layers.dense({ 
-          units: 1, 
-          activation: 'linear',
-          name: 'value_output'
-        })
-      ]
+        tf.layers.dense({
+          units: 1,
+          activation: "linear",
+          name: "value_output",
+        }),
+      ],
     });
 
     // Compile networks with optimizers
     this.policyNetwork.compile({
       optimizer: tf.train.adam(this.learningRate),
-      loss: 'categoricalCrossentropy',
-      metrics: ['accuracy']
+      loss: "categoricalCrossentropy",
+      metrics: ["accuracy"],
     });
 
     this.valueNetwork.compile({
       optimizer: tf.train.adam(this.learningRate),
-      loss: 'meanSquaredError',
-      metrics: ['mae']
+      loss: "meanSquaredError",
+      metrics: ["mae"],
     });
   }
 
@@ -530,7 +534,7 @@ export class LernmiAgent {
       stepCount: 0,
       steps: [],
       startedAt: new Date(),
-      status: 'active'
+      status: "active",
     };
 
     // Store episode in database
@@ -546,16 +550,16 @@ export class LernmiAgent {
     reasoning: string;
   }> {
     if (!this.currentEpisode) {
-      throw new Error('No active episode');
+      throw new Error("No active episode");
     }
 
     // Convert state to tensor
     const stateTensor = this.stateToTensor(state);
-    
+
     // Get action probabilities from policy network
     const actionProbs = this.policyNetwork.predict(stateTensor) as tf.Tensor;
     const actionProbsArray = await actionProbs.data();
-    
+
     // Choose action (epsilon-greedy exploration)
     let actionIndex: number;
     if (Math.random() < this.explorationRate) {
@@ -568,7 +572,7 @@ export class LernmiAgent {
 
     // Generate action using PCS
     const action = await this.generateActionFromIndex(actionIndex, state);
-    
+
     // Get value estimate
     const valueEstimate = this.valueNetwork.predict(stateTensor) as tf.Tensor;
     const confidence = (await valueEstimate.data())[0];
@@ -581,36 +585,51 @@ export class LernmiAgent {
     return {
       action,
       confidence,
-      reasoning: `Selected action ${actionIndex} with confidence ${confidence.toFixed(3)}`
+      reasoning: `Selected action ${actionIndex} with confidence ${confidence.toFixed(
+        3
+      )}`,
     };
   }
 
-  private async generateActionFromIndex(actionIndex: number, state: any): Promise<any> {
+  private async generateActionFromIndex(
+    actionIndex: number,
+    state: any
+  ): Promise<any> {
     // Map action index to actual actions using PCS
-    const actionMapping = await this.pcs.generatePrompt('lernmi_action_generation', {
-      context: {
-        action_index: actionIndex.toString(),
-        current_state: JSON.stringify(state),
-        available_actions: JSON.stringify(this.getAvailableActions()),
-        episode_context: JSON.stringify(this.currentEpisode?.scenarioDescription)
+    const actionMapping = await this.pcs.generatePrompt(
+      "lernmi_action_generation",
+      {
+        context: {
+          action_index: actionIndex.toString(),
+          current_state: JSON.stringify(state),
+          available_actions: JSON.stringify(this.getAvailableActions()),
+          episode_context: JSON.stringify(
+            this.currentEpisode?.scenarioDescription
+          ),
+        },
       }
-    });
+    );
 
     try {
       return JSON.parse(actionMapping.generated_prompt);
     } catch (error) {
-      console.error('Failed to parse action mapping:', error);
-      return { type: 'default', content: 'I need to think about this more.' };
+      console.error("Failed to parse action mapping:", error);
+      return { type: "default", content: "I need to think about this more." };
     }
   }
 
-  async receiveReward(previousState: any, action: any, newState: any, teacherFeedback?: {
-    rating: number;
-    feedback: string;
-    suggestions: string[];
-  }): Promise<number> {
+  async receiveReward(
+    previousState: any,
+    action: any,
+    newState: any,
+    teacherFeedback?: {
+      rating: number;
+      feedback: string;
+      suggestions: string[];
+    }
+  ): Promise<number> {
     if (!this.currentEpisode) {
-      throw new Error('No active episode');
+      throw new Error("No active episode");
     }
 
     // Calculate multi-dimensional reward
@@ -619,7 +638,7 @@ export class LernmiAgent {
       action,
       newState,
       teacherFeedback,
-      episodeContext: this.currentEpisode
+      episodeContext: this.currentEpisode,
     });
 
     // Create episode step
@@ -635,8 +654,8 @@ export class LernmiAgent {
       timestamp: new Date(),
       metadata: {
         rewardComponents: rewardSignal.components,
-        confidence: rewardSignal.confidence
-      }
+        confidence: rewardSignal.confidence,
+      },
     };
 
     // Add to current episode
@@ -655,7 +674,7 @@ export class LernmiAgent {
       nextState: newState,
       done: false, // Will be updated when episode ends
       episodeId: this.currentEpisode.id,
-      stepId: step.id
+      stepId: step.id,
     });
 
     // Store teacher interaction if provided
@@ -663,49 +682,55 @@ export class LernmiAgent {
       await this.storeTeacherInteraction({
         episodeId: this.currentEpisode.id,
         stepId: step.id,
-        teacherId: 'beep_boop', // or other teacher identifier
-        interactionType: 'feedback',
+        teacherId: "beep_boop", // or other teacher identifier
+        interactionType: "feedback",
         teacherInput: teacherFeedback.feedback,
         lernmiResponse: JSON.stringify(action),
         teacherRating: teacherFeedback.rating,
         feedbackContent: teacherFeedback.feedback,
-        improvementSuggestions: teacherFeedback.suggestions
+        improvementSuggestions: teacherFeedback.suggestions,
       });
     }
 
-    console.log(`Step ${step.stepNumber}: Reward = ${rewardSignal.totalReward.toFixed(3)}`);
+    console.log(
+      `Step ${step.stepNumber}: Reward = ${rewardSignal.totalReward.toFixed(3)}`
+    );
     return rewardSignal.totalReward;
   }
 
-  async endEpisode(reason: string = 'completed'): Promise<{
+  async endEpisode(reason: string = "completed"): Promise<{
     episodeId: string;
     totalReward: number;
     stepCount: number;
     learningMetrics: any;
   }> {
     if (!this.currentEpisode) {
-      throw new Error('No active episode');
+      throw new Error("No active episode");
     }
 
     this.currentEpisode.completedAt = new Date();
     this.currentEpisode.completionReason = reason;
-    this.currentEpisode.status = 'completed';
+    this.currentEpisode.status = "completed";
 
     // Mark last experience as terminal
     if (this.currentEpisode.steps.length > 0) {
-      const lastStep = this.currentEpisode.steps[this.currentEpisode.steps.length - 1];
+      const lastStep =
+        this.currentEpisode.steps[this.currentEpisode.steps.length - 1];
       await this.experienceBuffer.markAsTerminal(lastStep.id);
     }
 
     // Calculate learning metrics
-    const learningMetrics = await this.calculateEpisodeLearningMetrics(this.currentEpisode);
+    const learningMetrics = await this.calculateEpisodeLearningMetrics(
+      this.currentEpisode
+    );
     this.currentEpisode.learningMetrics = learningMetrics;
 
     // Update episode in database
     await this.updateEpisode(this.currentEpisode);
 
     // Trigger learning if we have enough experience
-    if (await this.experienceBuffer.size() >= 32) { // batch size
+    if ((await this.experienceBuffer.size()) >= 32) {
+      // batch size
       await this.performLearningUpdate();
     }
 
@@ -716,45 +741,49 @@ export class LernmiAgent {
       episodeId: this.currentEpisode.id,
       totalReward: this.currentEpisode.totalReward,
       stepCount: this.currentEpisode.stepCount,
-      learningMetrics
+      learningMetrics,
     };
 
-    console.log(`Episode ${this.currentEpisode.id} completed: ${JSON.stringify(result)}`);
+    console.log(
+      `Episode ${this.currentEpisode.id} completed: ${JSON.stringify(result)}`
+    );
     this.currentEpisode = undefined;
 
     return result;
   }
 
   private async performLearningUpdate(): Promise<void> {
-    console.log('Performing learning update...');
+    console.log("Performing learning update...");
 
     // Sample batch from experience buffer
     const batch = await this.experienceBuffer.sample(32);
-    
+
     if (batch.length === 0) return;
 
     // Prepare training data
-    const states = batch.map(exp => exp.state);
-    const actions = batch.map(exp => exp.action);
-    const rewards = batch.map(exp => exp.reward);
-    const nextStates = batch.map(exp => exp.nextState);
-    const dones = batch.map(exp => exp.done);
+    const states = batch.map((exp) => exp.state);
+    const actions = batch.map((exp) => exp.action);
+    const rewards = batch.map((exp) => exp.reward);
+    const nextStates = batch.map((exp) => exp.nextState);
+    const dones = batch.map((exp) => exp.done);
 
     // Convert to tensors
-    const stateTensors = tf.tensor2d(states.map(s => this.stateToVector(s)));
-    const nextStateTensors = tf.tensor2d(nextStates.map(s => this.stateToVector(s)));
+    const stateTensors = tf.tensor2d(states.map((s) => this.stateToVector(s)));
+    const nextStateTensors = tf.tensor2d(
+      nextStates.map((s) => this.stateToVector(s))
+    );
     const rewardTensors = tf.tensor1d(rewards);
-    
+
     // Calculate value targets using Bellman equation
     const currentValues = this.valueNetwork.predict(stateTensors) as tf.Tensor;
     const nextValues = this.valueNetwork.predict(nextStateTensors) as tf.Tensor;
-    
+
     // Value targets: r + γ * V(s') * (1 - done)
     const valueTargets = tf.add(
       rewardTensors,
       tf.mul(
         tf.mul(nextValues.squeeze(), tf.scalar(0.95)), // discount factor
-        tf.sub(tf.scalar(1), tf.tensor1d(dones.map(d => d ? 1 : 0)))
+        tf.sub(tf.scalar(1), tf.tensor1d(dones.map((d) => (d ? 1 : 0))))
       )
     );
 
@@ -765,12 +794,14 @@ export class LernmiAgent {
     await this.valueNetwork.fit(stateTensors, valueTargets, {
       epochs: 1,
       batchSize: 32,
-      verbose: 0
+      verbose: 0,
     });
 
     // Update policy network (simplified policy gradient)
-    const actionTensors = tf.tensor2d(actions.map(a => this.actionToVector(a)));
-    
+    const actionTensors = tf.tensor2d(
+      actions.map((a) => this.actionToVector(a))
+    );
+
     // Custom training step for policy network
     await this.updatePolicyNetwork(stateTensors, actionTensors, advantages);
 
@@ -787,16 +818,16 @@ export class LernmiAgent {
     // Decay exploration rate
     this.explorationRate = Math.max(0.01, this.explorationRate * 0.995);
 
-    console.log('Learning update completed');
+    console.log("Learning update completed");
   }
 
   private async updatePolicyNetwork(
-    states: tf.Tensor, 
-    actions: tf.Tensor, 
+    states: tf.Tensor,
+    actions: tf.Tensor,
     advantages: tf.Tensor
   ): Promise<void> {
     const optimizer = tf.train.adam(this.learningRate);
-    
+
     const loss = tf.tidy(() => {
       const predictions = this.policyNetwork.predict(states) as tf.Tensor;
       const actionProbs = tf.sum(tf.mul(predictions, actions), 1);
@@ -806,12 +837,15 @@ export class LernmiAgent {
 
     const grads = tf.variableGrads(loss, this.policyNetwork.trainableWeights);
     optimizer.applyGradients(grads.grads);
-    
+
     loss.dispose();
-    Object.values(grads.grads).forEach(grad => grad.dispose());
+    Object.values(grads.grads).forEach((grad) => grad.dispose());
   }
 
-  async interactWithBeepBoop(message: string, context?: any): Promise<{
+  async interactWithBeepBoop(
+    message: string,
+    context?: any
+  ): Promise<{
     response: string;
     feedback: any;
     learningSignals: any;
@@ -821,10 +855,10 @@ export class LernmiAgent {
       message,
       context: {
         ...context,
-        source: 'lernmi',
+        source: "lernmi",
         training_mode: true,
-        request_feedback: true
-      }
+        request_feedback: true,
+      },
     });
 
     // Extract learning signals from Beep-Boop's response
@@ -836,13 +870,13 @@ export class LernmiAgent {
       beepBoopResponse: beepBoopResponse.response,
       context,
       learningSignals,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     return {
       response: beepBoopResponse.response,
       feedback: beepBoopResponse.feedback,
-      learningSignals
+      learningSignals,
     };
   }
 
@@ -856,66 +890,78 @@ export class LernmiAgent {
     // Convert complex state to fixed-size numerical vector
     // This is a simplified implementation - in practice, you'd want more sophisticated encoding
     const vector = new Array(128).fill(0);
-    
+
     // Encode different aspects of the state
     if (state.context) {
       // Encode context features
       vector[0] = state.context.length || 0;
-      vector[1] = state.context.includes('question') ? 1 : 0;
-      vector[2] = state.context.includes('problem') ? 1 : 0;
+      vector[1] = state.context.includes("question") ? 1 : 0;
+      vector[2] = state.context.includes("problem") ? 1 : 0;
       // ... more context features
     }
-    
+
     if (state.conversation_history) {
       vector[10] = Math.min(state.conversation_history.length / 10, 1.0);
       // ... encode conversation features
     }
-    
+
     if (state.user_mood) {
-      const moodMap = { happy: 1, sad: -1, neutral: 0, excited: 0.8, frustrated: -0.8 };
+      const moodMap = {
+        happy: 1,
+        sad: -1,
+        neutral: 0,
+        excited: 0.8,
+        frustrated: -0.8,
+      };
       vector[20] = moodMap[state.user_mood] || 0;
     }
-    
+
     // Add temporal features
     const hour = new Date().getHours();
-    vector[30] = Math.sin(2 * Math.PI * hour / 24); // cyclical time encoding
-    vector[31] = Math.cos(2 * Math.PI * hour / 24);
-    
+    vector[30] = Math.sin((2 * Math.PI * hour) / 24); // cyclical time encoding
+    vector[31] = Math.cos((2 * Math.PI * hour) / 24);
+
     return vector;
   }
 
   private actionToVector(action: any): number[] {
     // Convert action to one-hot or multi-hot vector
     const vector = new Array(64).fill(0);
-    
+
     if (action.type) {
-      const actionTypes = ['question', 'answer', 'clarification', 'suggestion', 'analysis'];
+      const actionTypes = [
+        "question",
+        "answer",
+        "clarification",
+        "suggestion",
+        "analysis",
+      ];
       const typeIndex = actionTypes.indexOf(action.type);
       if (typeIndex >= 0) vector[typeIndex] = 1;
     }
-    
+
     if (action.confidence) {
       vector[10] = action.confidence;
     }
-    
+
     if (action.length) {
       vector[11] = Math.min(action.length / 1000, 1.0); // normalized length
     }
-    
+
     return vector;
   }
 
   // Utility methods for getting available actions
   private getAvailableActions(): string[] {
     return [
-      'ask_clarifying_question',
-      'provide_direct_answer',
-      'suggest_alternative',
-      'request_more_context',
-      'analyze_problem',
-      'break_down_task',
-      'summarize_understanding',
-      'admit_uncertainty'
+      "ask_clarifying_question",
+      "provide_direct_answer",
+      "suggest_alternative",
+      "request_more_context",
+      "analyze_problem",
+      "break_down_task",
+      "summarize_understanding",
+      "admit_uncertainty",
     ];
   }
 
@@ -923,22 +969,25 @@ export class LernmiAgent {
   private async storeEpisode(episode: Episode): Promise<void> {
     const client = await this.postgres.connect();
     try {
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO lernmi.episodes (
           id, session_id, episode_number, environment_type, scenario_description,
           initial_state, total_reward, step_count, started_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      `, [
-        episode.id,
-        episode.sessionId,
-        episode.episodeNumber,
-        episode.environmentType,
-        episode.scenarioDescription,
-        JSON.stringify(episode.initialState),
-        episode.totalReward,
-        episode.stepCount,
-        episode.startedAt
-      ]);
+      `,
+        [
+          episode.id,
+          episode.sessionId,
+          episode.episodeNumber,
+          episode.environmentType,
+          episode.scenarioDescription,
+          JSON.stringify(episode.initialState),
+          episode.totalReward,
+          episode.stepCount,
+          episode.startedAt,
+        ]
+      );
     } finally {
       client.release();
     }
@@ -947,68 +996,74 @@ export class LernmiAgent {
   private async storeEpisodeStep(step: EpisodeStep): Promise<void> {
     const client = await this.postgres.connect();
     try {
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO lernmi.episode_steps (
           id, episode_id, step_number, state_before, action_taken, reward_received,
           state_after, teacher_feedback, metadata, timestamp
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      `, [
-        step.id,
-        step.episodeId,
-        step.stepNumber,
-        JSON.stringify(step.stateBefore),
-        JSON.stringify(step.actionTaken),
-        step.rewardReceived,
-        JSON.stringify(step.stateAfter),
-        step.teacherFeedback,
-        JSON.stringify(step.metadata),
-        step.timestamp
-      ]);
+      `,
+        [
+          step.id,
+          step.episodeId,
+          step.stepNumber,
+          JSON.stringify(step.stateBefore),
+          JSON.stringify(step.actionTaken),
+          step.rewardReceived,
+          JSON.stringify(step.stateAfter),
+          step.teacherFeedback,
+          JSON.stringify(step.metadata),
+          step.timestamp,
+        ]
+      );
     } finally {
       client.release();
     }
   }
 
   // Additional methods for training, evaluation, checkpointing, etc.
-  
+
   async saveCheckpoint(name: string, notes?: string): Promise<string> {
     const checkpointId = uuidv4();
-    
+
     // Save model weights
     const policyWeights = await this.serializeModel(this.policyNetwork);
     const valueWeights = await this.serializeModel(this.valueNetwork);
-    
+
     const client = await this.postgres.connect();
     try {
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO lernmi.model_checkpoints (
           id, model_name, version, checkpoint_type, model_architecture,
           hyperparameters, performance_metrics, training_episodes, notes
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      `, [
-        checkpointId,
-        'lernmi_agent',
-        await this.getNextVersion(),
-        'manual',
-        JSON.stringify({
-          policy_architecture: this.policyNetwork.toJSON(),
-          value_architecture: this.valueNetwork.toJSON(),
-          policy_weights: policyWeights,
-          value_weights: valueWeights
-        }),
-        JSON.stringify({
-          learning_rate: this.learningRate,
-          exploration_rate: this.explorationRate,
-          discount_factor: 0.95
-        }),
-        JSON.stringify(await this.getCurrentPerformanceMetrics()),
-        await this.getTotalEpisodes(),
-        notes
-      ]);
+      `,
+        [
+          checkpointId,
+          "lernmi_agent",
+          await this.getNextVersion(),
+          "manual",
+          JSON.stringify({
+            policy_architecture: this.policyNetwork.toJSON(),
+            value_architecture: this.valueNetwork.toJSON(),
+            policy_weights: policyWeights,
+            value_weights: valueWeights,
+          }),
+          JSON.stringify({
+            learning_rate: this.learningRate,
+            exploration_rate: this.explorationRate,
+            discount_factor: 0.95,
+          }),
+          JSON.stringify(await this.getCurrentPerformanceMetrics()),
+          await this.getTotalEpisodes(),
+          notes,
+        ]
+      );
     } finally {
       client.release();
     }
-    
+
     return checkpointId;
   }
 

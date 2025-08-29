@@ -52,7 +52,7 @@ resources:
   database:
     postgresql: "Estimated GB storage"
     neo4j: "Estimated GB storage"
-    chroma: "Estimated GB storage"
+    qdrant: "Estimated GB storage"
     redis: "Estimated GB storage"
 
   compute:
@@ -233,17 +233,20 @@ The bootstrap system is a critical component that ensures all PCS-enabled applic
 #### Core Principles
 
 ##### 1. Idempotent Operations
+
 - **Database Schema:** Check if tables exist before creation
 - **Prompt Templates:** Verify existence before insertion, handle updates gracefully
 - **System Metadata:** Maintain initialization state without duplication
 - **Data Seeding:** Skip if already present, update if changed
 
 ##### 2. Prompt Template Management
+
 The bootstrap system creates foundational prompts that serve as the "operating system" for semantic intelligence:
 
 **Required Core Prompts:**
+
 - `query_understanding` - Analyzes user intent and information needs
-- `knowledge_retrieval` - Finds relevant knowledge from stored data  
+- `knowledge_retrieval` - Finds relevant knowledge from stored data
 - `response_generation` - Generates contextual, helpful responses
 - `feedback_learning` - Learns from user feedback to improve
 
@@ -253,14 +256,14 @@ The bootstrap system creates foundational prompts that serve as the "operating s
 async def _create_initial_prompts(self):
     """Create foundational prompts idempotently."""
     logger.info("🧠 Creating/updating initial prompts...")
-    
+
     try:
         initial_prompts = self._get_initial_prompt_templates()
-        
+
         for prompt_data in initial_prompts:
             # Check if prompt exists
             existing_prompt = self.prompt_manager.get_prompt_template(prompt_data['name'])
-            
+
             if existing_prompt:
                 # Update if content changed
                 if self._prompt_needs_update(existing_prompt, prompt_data):
@@ -272,26 +275,28 @@ async def _create_initial_prompts(self):
                 # Create new prompt
                 self.prompt_manager.create_prompt_template(prompt_data)
                 logger.info(f"✅ Created prompt: {prompt_data['name']}")
-        
+
         logger.info("✅ All initial prompts processed idempotently")
-        
+
     except Exception as e:
         logger.error(f"Failed to process initial prompts: {e}")
         raise
 ```
 
 ##### 4. Bootstrap State Management
+
 The system maintains state through the `system_metadata` table:
 
 ```sql
 -- Key bootstrap state indicators
 initialized: 'true'/'false'     -- Application initialization status
-version: '1.0.0'               -- Current application version  
+version: '1.0.0'               -- Current application version
 bootstrap_date: timestamp      -- Date of last successful bootstrap
 prompt_count: integer          -- Number of foundational prompts
 ```
 
 ##### 5. Error Handling and Recovery
+
 - **Graceful Degradation:** Continue operation even if some prompts fail
 - **Partial Success Handling:** Track what succeeded vs. failed
 - **Rollback Capability:** Revert to previous state if critical failures occur
@@ -434,6 +439,7 @@ docker exec <app-container> python -c "from app.bootstrap import DigiCoreBootstr
    ```
 
 2. **Create data access layer**
+
    ```typescript
    // Example data service
    class UserService {

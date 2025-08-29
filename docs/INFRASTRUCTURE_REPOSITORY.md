@@ -57,7 +57,8 @@ networks:
 volumes:
   pg_data:
   neo4j_data:
-  chroma_data:
+  qdrant_data:
+  qdrant_snapshots:
   redis_data:
   prometheus_data:
   grafana_data:
@@ -98,17 +99,24 @@ services:
       - "7474:7474"  # HTTP
       - "7687:7687"  # Bolt
 
-  # ChromaDB Vector Database
-  chroma:
-    image: chromadb/chroma:1.0.15
-    container_name: digi-chroma
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: digi-qdrant
     restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__STORAGE__STORAGE_PATH: /qdrant/storage
+      QDRANT__STORAGE__SNAPSHOTS_PATH: /qdrant/snapshots
     volumes:
-      - chroma_data:/chroma/chroma
+      - qdrant_data:/qdrant/storage
+      - qdrant_snapshots:/qdrant/snapshots
     networks:
       - digi-net
     ports:
-      - "8001:8000"
+      - "6333:6333"  # HTTP API
+      - "6334:6334"  # gRPC API
 
   # Redis Cache
   redis:
@@ -167,7 +175,7 @@ services:
     depends_on:
       - postgres
       - neo4j
-      - chroma
+      - qdrant
       - redis
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
@@ -177,7 +185,7 @@ services:
     volumes:
       - pg_data:/backup/pg_data:ro
       - neo4j_data:/backup/neo4j_data:ro
-      - chroma_data:/backup/chroma_data:ro
+      - qdrant_data:/backup/qdrant_data:ro
       - redis_data:/backup/redis_data:ro
       - backup_cache:/root/.cache/restic
     entrypoint: ["/bin/sh", "-c"]
@@ -204,9 +212,10 @@ services:
       - "7474:7474" # Browser interface
       - "7687:7687" # Bolt protocol
 
-  chroma:
+  qdrant:
     ports:
-      - "8001:8000" # HTTP API
+      - "6333:6333" # HTTP API
+      - "6334:6334" # gRPC API
 
   redis:
     ports:
@@ -242,8 +251,9 @@ AWS_SECRET_ACCESS_KEY=your_aws_secret_key
 RESTIC_REPOSITORY=s3:https://s3.us-east-2.amazonaws.com/digi-backup
 RESTIC_PASSWORD=your_restic_password
 
-# Optional: ChromaDB PostgreSQL Backend
-CHROMA_DATASTORE=postgres
+# Optional: Qdrant Configuration
+QDRANT_API_KEY=your_qdrant_api_key
+QDRANT_TELEMETRY_DISABLED=true
 ```
 
 ## Health Check Script
@@ -275,9 +285,9 @@ docker-compose exec -T postgres pg_isready -U digi
 echo "🕸️  Checking Neo4j..."
 curl -f http://localhost:7474/browser/ || echo "Neo4j not accessible"
 
-# Check ChromaDB
-echo "🔍 Checking ChromaDB..."
-curl -f http://localhost:8001/api/v1/heartbeat || echo "ChromaDB not accessible"
+# Check Qdrant
+echo "🔍 Checking Qdrant..."
+curl -f http://localhost:6333/collections || echo "Qdrant not accessible"
 
 # Check Redis
 echo "🔴 Checking Redis..."
@@ -427,7 +437,7 @@ services:
     external_links:
       - digi-infrastructure_postgres_1:postgres
       - digi-infrastructure_neo4j_1:neo4j
-      - digi-infrastructure_chroma_1:chroma
+      - digi-infrastructure_qdrant_1:qdrant
       - digi-infrastructure_redis_1:redis
     networks:
       - digi-net
@@ -438,7 +448,7 @@ services:
 - **Grafana**: http://localhost:3000 (admin/admin)
 - **Prometheus**: http://localhost:9090
 - **Neo4j Browser**: http://localhost:7474
-- **ChromaDB**: http://localhost:8001
+- **Qdrant**: http://localhost:6333
 
 ## Troubleshooting
 
