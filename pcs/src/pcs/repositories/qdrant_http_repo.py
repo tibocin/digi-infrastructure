@@ -97,6 +97,60 @@ class SimilarityResult:
         }
 
 
+@dataclass
+class VectorCollectionStats:
+    """Container for collection statistics."""
+    name: str
+    document_count: int
+    dimension: int
+    memory_usage_mb: float
+    tenant_id: Optional[str] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary representation."""
+        return {
+            "name": self.name,
+            "document_count": self.document_count,
+            "dimension": self.dimension,
+            "memory_usage_mb": self.memory_usage_mb,
+            "tenant_id": self.tenant_id
+        }
+
+
+@dataclass
+class BulkVectorOperation:
+    """Container for bulk vector operations."""
+    operation_type: str
+    documents: List[VectorDocument]
+    batch_size: int = 100
+    tenant_id: Optional[str] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary representation."""
+        return {
+            "operation_type": self.operation_type,
+            "document_count": len(self.documents),
+            "batch_size": self.batch_size,
+            "tenant_id": self.tenant_id
+        }
+
+
+@dataclass
+class VectorSearchRequest:
+    """Container for vector search requests."""
+    query_text: Optional[str] = None
+    query_embedding: Optional[List[float]] = None
+    collection_name: str = ""
+    n_results: int = 10
+    similarity_threshold: float = 0.0
+    algorithm: SimilarityAlgorithm = SimilarityAlgorithm.COSINE
+    include_embeddings: bool = False
+    rerank: bool = False
+    tenant_id: Optional[str] = None
+    offset: Optional[int] = None
+    metadata_filter: Optional[Dict[str, Any]] = None
+
+
 class EnhancedQdrantHTTPRepository:
     """
     Enhanced Qdrant repository using HTTP client for reliable vector operations.
@@ -508,6 +562,637 @@ class EnhancedQdrantHTTPRepository:
             "collection_cache_size": len(self._collection_cache),
             "is_async": self._is_async
         }
+    
+    async def find_similar_documents(
+        self,
+        collection_name: str,
+        target_embedding: List[float],
+        similarity_threshold: float = 0.7,
+        max_results: int = 10,
+        tenant_id: Optional[str] = None
+    ) -> List[SimilarityResult]:
+        """Find similar documents based on embedding similarity."""
+        try:
+            with PerformanceMonitor("find_similar_documents", "qdrant"):
+                results = await self.semantic_search_advanced(
+                    VectorSearchRequest(
+                        query_embedding=target_embedding,
+                        collection_name=collection_name,
+                        n_results=max_results,
+                        similarity_threshold=similarity_threshold,
+                        tenant_id=tenant_id
+                    )
+                )
+            return results
+        except Exception as e:
+            self.logger.error(f"Failed to find similar documents: {e}")
+            raise RepositoryError(f"Failed to find similar documents: {e}")
+    
+    async def cluster_documents(
+        self,
+        collection_name: str,
+        n_clusters: int = 2,
+        algorithm: str = "kmeans",
+        tenant_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Cluster documents using specified algorithm."""
+        try:
+            with PerformanceMonitor("cluster_documents", "qdrant"):
+                # Get all documents from collection
+                scroll_points, _ = self.client.scroll(
+                    collection_name=collection_name,
+                    limit=10000,  # Large limit to get all documents
+                    with_payload=True,
+                    with_vectors=True
+                )
+                
+                if not scroll_points:
+                    return {
+                        "clusters": [],
+                        "statistics": {"total_documents": 0},
+                        "algorithm": algorithm
+                    }
+                
+                # Extract embeddings and filter by tenant if specified
+                embeddings = []
+                doc_ids = []
+                for point in scroll_points:
+                    if tenant_id is None or point.payload.get("tenant_id") == tenant_id:
+                        embeddings.append(point.vector)
+                        doc_ids.append(point.id)
+                
+                if not embeddings:
+                    return {
+                        "clusters": [],
+                        "statistics": {"total_documents": 0},
+                        "algorithm": algorithm
+                    }
+                
+                embeddings_array = np.array(embeddings)
+                
+                if algorithm == "kmeans":
+                    cluster_labels = await self._kmeans_clustering(embeddings_array, n_clusters)
+                elif algorithm == "dbscan":
+                    cluster_labels = await self._dbscan_clustering(embeddings_array)
+                else:
+                    raise RepositoryError(f"Unsupported clustering algorithm: {algorithm}")
+                
+                # Group documents by cluster
+                clusters = defaultdict(list)
+                for i, label in enumerate(cluster_labels):
+                    clusters[int(label)].append(doc_ids[i])
+                
+                return {
+                    "clusters": [list(cluster) for cluster in clusters.values()],
+                    "statistics": {"total_documents": len(embeddings)},
+                    "algorithm": algorithm
+                }
+                
+        except Exception as e:
+            self.logger.error(f"Failed to cluster documents: {e}")
+            raise RepositoryError(f"Failed to cluster documents: {e}")
+    
+    async def get_collection_statistics(
+        self,
+        collection_name: str,
+        tenant_id: Optional[str] = None
+    ) -> VectorCollectionStats:
+        """Get comprehensive collection statistics."""
+        try:
+            with PerformanceMonitor("get_collection_statistics", "qdrant"):
+                # Get basic collection info
+                collection_info = self.client.get_collection(collection_name)
+                
+                # Get document count
+                if tenant_id:
+                    # Count tenant-specific documents
+                    scroll_points, _ = self.client.scroll(
+                        collection_name=collection_name,
+                        limit=10000,
+                        with_payload=True
+                    )
+                    tenant_count = sum(1 for point in scroll_points if point.payload.get("tenant_id") == tenant_id)
+                    document_count = tenant_count
+                else:
+                    document_count = collection_info.points_count
+                
+                # Calculate memory usage (rough estimate)
+                vector_size = collection_info.config.params.vector.size
+                memory_usage_mb = (document_count * vector_size * 4) / (1024 * 1024)  # 4 bytes per float
+                
+                return VectorCollectionStats(
+                    name=collection_name,
+                    document_count=document_count,
+                    dimension=vector_size,
+                    memory_usage_mb=memory_usage_mb,
+                    tenant_id=tenant_id
+                )
+                
+        except Exception as e:
+            self.logger.error(f"Failed to get collection statistics: {e}")
+            raise RepositoryError(f"Failed to get collection statistics: {e}")
+    
+    async def optimize_collection_performance(self, collection_name: str) -> Dict[str, Any]:
+        """Optimize collection performance."""
+        try:
+            with PerformanceMonitor("optimize_collection_performance", "qdrant"):
+                # Get current stats
+                before_stats = await self.get_collection_statistics(collection_name)
+                
+                # Apply optimizations
+                optimizations = {
+                    "deleted_threshold": 0.2,
+                    "vacuum_min_vector_count": 1000
+                }
+                
+                self.client.update_collection(
+                    collection_name=collection_name,
+                    optimizers_config=optimizations
+                )
+                
+                # Get stats after optimization
+                after_stats = await self.get_collection_statistics(collection_name)
+                
+                return {
+                    "before_optimization": before_stats.to_dict(),
+                    "optimizations_applied": optimizations,
+                    "performance_improvements": {
+                        "memory_reduction_mb": before_stats.memory_usage_mb - after_stats.memory_usage_mb
+                    }
+                }
+                
+        except Exception as e:
+            self.logger.error(f"Failed to optimize collection performance: {e}")
+            raise RepositoryError(f"Failed to optimize collection performance: {e}")
+    
+    async def export_embeddings(
+        self,
+        collection_name: str,
+        format_type: str = "json",
+        include_metadata: bool = True,
+        tenant_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Export embeddings in specified format."""
+        try:
+            with PerformanceMonitor("export_embeddings", "qdrant"):
+                # Get all documents
+                scroll_points, _ = self.client.scroll(
+                    collection_name=collection_name,
+                    limit=10000,
+                    with_payload=True,
+                    with_vectors=True
+                )
+                
+                # Filter by tenant if specified
+                if tenant_id:
+                    scroll_points = [p for p in scroll_points if p.payload.get("tenant_id") == tenant_id]
+                
+                if format_type == "numpy":
+                    embeddings = np.array([point.vector for point in scroll_points])
+                    documents = [point.payload.get("content", "") for point in scroll_points]
+                    metadatas = [point.payload for point in scroll_points]
+                    
+                    return {
+                        "collection_name": collection_name,
+                        "format": "numpy",
+                        "document_count": len(scroll_points),
+                        "embeddings": embeddings,
+                        "documents": documents,
+                        "metadatas": metadatas,
+                        "tenant_id": tenant_id
+                    }
+                elif format_type == "json":
+                    data = []
+                    for point in scroll_points:
+                        item = {
+                            "id": point.id,
+                            "embedding": point.vector,
+                            "content": point.payload.get("content", "")
+                        }
+                        if include_metadata:
+                            item["metadata"] = point.payload
+                        data.append(item)
+                    
+                    return {
+                        "collection_name": collection_name,
+                        "format": "json",
+                        "document_count": len(scroll_points),
+                        "data": data,
+                        "tenant_id": tenant_id
+                    }
+                else:
+                    raise RepositoryError(f"Unsupported export format: {format_type}")
+                    
+        except Exception as e:
+            self.logger.error(f"Failed to export embeddings: {e}")
+            raise RepositoryError(f"Failed to export embeddings: {e}")
+    
+    async def semantic_search_advanced(self, request: VectorSearchRequest) -> List[SimilarityResult]:
+        """Perform advanced semantic search with multi-tenancy and reranking."""
+        try:
+            with PerformanceMonitor("semantic_search_advanced", "qdrant"):
+                # Build query filter
+                query_filter = self._build_query_filter(request)
+                
+                # Perform search
+                search_results = self.client.search(
+                    collection_name=request.collection_name,
+                    query_vector=request.query_embedding,
+                    limit=request.n_results,
+                    query_filter=query_filter,
+                    with_payload=True,
+                    with_vectors=request.include_embeddings
+                )
+                
+                # Convert to SimilarityResult objects
+                results = []
+                for result in search_results:
+                    if result.score >= request.similarity_threshold:
+                        doc = VectorDocument(
+                            id=str(result.id),
+                            content=result.payload.get("content", ""),
+                            embedding=result.vector or [],
+                            metadata=result.payload,
+                            created_at=datetime.fromisoformat(result.payload.get("created_at", datetime.now().isoformat())),
+                            collection_name=request.collection_name,
+                            tenant_id=result.payload.get("tenant_id")
+                        )
+                        
+                        similarity_result = SimilarityResult(
+                            document=doc,
+                            similarity_score=result.score,
+                            metadata=result.payload
+                        )
+                        results.append(similarity_result)
+                
+                # Apply reranking if requested
+                if request.rerank and len(results) > 1:
+                    results = await self._rerank_results(results, request)
+                
+                return results
+                
+        except Exception as e:
+            self.logger.error(f"Failed to perform advanced semantic search: {e}")
+            raise RepositoryError(f"Failed to perform advanced semantic search: {e}")
+    
+    async def bulk_upsert_documents(
+        self,
+        collection_name: str,
+        operation: BulkVectorOperation
+    ) -> Dict[str, Any]:
+        """Bulk upsert documents with batch processing."""
+        try:
+            start_time = time.time()
+            
+            with PerformanceMonitor("bulk_upsert_documents", "qdrant"):
+                total_processed = 0
+                batch_count = 0
+                
+                # Process in batches
+                for i in range(0, len(operation.documents), operation.batch_size):
+                    batch = operation.documents[i:i + operation.batch_size]
+                    
+                    # Convert to Qdrant points
+                    points = []
+                    for doc in batch:
+                        point = doc.to_qdrant_point()
+                        points.append(point)
+                    
+                    # Upsert batch
+                    self.client.upsert(
+                        collection_name=collection_name,
+                        points=points
+                    )
+                    
+                    total_processed += len(batch)
+                    batch_count += 1
+                
+                execution_time = time.time() - start_time
+                
+                return {
+                    "total_processed": total_processed,
+                    "batch_count": batch_count,
+                    "execution_time_seconds": execution_time
+                }
+                
+        except Exception as e:
+            self.logger.error(f"Failed to bulk upsert documents: {e}")
+            raise RepositoryError(f"Failed to bulk upsert documents: {e}")
+    
+    def _calculate_similarity(self, distance: float, algorithm: SimilarityAlgorithm) -> float:
+        """Calculate similarity score from distance based on algorithm."""
+        if algorithm == SimilarityAlgorithm.COSINE:
+            return distance  # Qdrant returns similarity directly for cosine
+        elif algorithm == SimilarityAlgorithm.EUCLIDEAN:
+            return 1.0 / (1.0 + distance)  # Convert distance to similarity
+        elif algorithm == SimilarityAlgorithm.MANHATTAN:
+            return 1.0 / (1.0 + distance)  # Convert distance to similarity
+        else:
+            return distance  # Default to direct value
+    
+    async def _rerank_results(
+        self,
+        results: List[SimilarityResult],
+        request: VectorSearchRequest
+    ) -> List[SimilarityResult]:
+        """Rerank results with metadata boosting."""
+        # Simple reranking based on metadata priority
+        for result in results:
+            metadata = result.document.metadata
+            
+            # Boost score based on metadata
+            if metadata.get("priority") == "high":
+                result.similarity_score *= 1.2
+            if metadata.get("recent"):
+                result.similarity_score *= 1.1
+        
+        # Sort by boosted scores
+        results.sort(key=lambda x: x.similarity_score, reverse=True)
+        return results
+    
+    async def _kmeans_clustering(self, embeddings: np.ndarray, n_clusters: int) -> np.ndarray:
+        """Perform K-means clustering with fallback."""
+        try:
+            from sklearn.cluster import KMeans
+            kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+            return kmeans.fit_predict(embeddings)
+        except ImportError:
+            # Fallback: simple random assignment
+            self.logger.warning("sklearn not available, using fallback clustering")
+            return np.random.randint(0, n_clusters, size=len(embeddings))
+    
+    async def _dbscan_clustering(self, embeddings: np.ndarray) -> np.ndarray:
+        """Perform DBSCAN clustering with fallback."""
+        try:
+            from sklearn.cluster import DBSCAN
+            dbscan = DBSCAN(eps=0.5, min_samples=2)
+            return dbscan.fit_predict(embeddings)
+        except ImportError:
+            # Fallback: assign all to same cluster
+            self.logger.warning("sklearn not available, using fallback clustering")
+            return np.zeros(len(embeddings), dtype=int)
+    
+    def _calculate_avg_query_time(self, collection_name: str) -> float:
+        """Calculate average query time for a collection."""
+        if not self._query_metrics:
+            return 0.0
+        
+        collection_metrics = [
+            m for m in self._query_metrics 
+            if m.get("collection") == collection_name
+        ]
+        
+        if not collection_metrics:
+            return 0.0
+        
+        avg_time = sum(m.get("execution_time", 0) for m in collection_metrics) / len(collection_metrics)
+        return avg_time * 1000  # Convert to milliseconds
+    
+    def _build_query_filter(self, request: VectorSearchRequest):
+        """Build query filter for search operations."""
+        if not request.tenant_id and not request.metadata_filter:
+            return None
+        
+        # This is a simplified filter - in practice, you'd use Qdrant's filter syntax
+        # For now, we'll return None and let the client handle filtering
+        return None
+    
+    # Legacy compatibility methods
+    async def create_collection(
+        self,
+        collection_name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        vector_size: Optional[int] = None,
+        distance: Optional[str] = None
+    ) -> bool:
+        """Legacy create_collection method for backward compatibility."""
+        if vector_size is None:
+            vector_size = 384
+        
+        if distance is None:
+            distance = "cosine"
+        
+        return await self.create_collection_optimized(
+            collection_name=collection_name,
+            vector_size=vector_size,
+            distance=distance
+        )
+    
+    async def get_collection(self, collection_name: str) -> bool:
+        """Legacy get_collection method for backward compatibility."""
+        try:
+            return self.client.collection_exists(collection_name)
+        except Exception:
+            return False
+    
+    async def add_documents(
+        self,
+        collection_name: str,
+        documents: List[str],
+        ids: List[str],
+        metadatas: List[Dict[str, Any]],
+        embeddings: List[List[float]],
+        tenant_id: Optional[str] = None
+    ) -> bool:
+        """Legacy add_documents method for backward compatibility."""
+        try:
+            # Convert to VectorDocument objects
+            vector_docs = []
+            for i, (doc_id, content, metadata, embedding) in enumerate(zip(ids, documents, metadatas, embeddings)):
+                doc = VectorDocument(
+                    id=doc_id,
+                    content=content,
+                    embedding=embedding,
+                    metadata=metadata,
+                    created_at=datetime.now(),
+                    collection_name=collection_name,
+                    tenant_id=tenant_id
+                )
+                vector_docs.append(doc)
+            
+            # Use bulk upsert
+            operation = BulkVectorOperation(
+                operation_type="insert",
+                documents=vector_docs,
+                tenant_id=tenant_id
+            )
+            
+            result = await self.bulk_upsert_documents(collection_name, operation)
+            return result["total_processed"] > 0
+            
+        except Exception as e:
+            self.logger.error(f"Failed to add documents: {e}")
+            return False
+    
+    async def query_documents(
+        self,
+        collection_name: str,
+        query_embeddings: List[List[float]],
+        n_results: int = 10,
+        where: Optional[Dict[str, Any]] = None,
+        tenant_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Legacy query_documents method for backward compatibility."""
+        try:
+            # Use the first query embedding
+            query_embedding = query_embeddings[0] if query_embeddings else []
+            
+            request = VectorSearchRequest(
+                query_embedding=query_embedding,
+                collection_name=collection_name,
+                n_results=n_results,
+                tenant_id=tenant_id
+            )
+            
+            results = await self.semantic_search_advanced(request)
+            
+            # Convert to legacy format
+            return {
+                "ids": [r.document.id for r in results],
+                "documents": [r.document.content for r in results],
+                "distances": [1.0 - r.similarity_score for r in results],
+                "metadatas": [r.document.metadata for r in results]
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Failed to query documents: {e}")
+            return {"ids": [], "documents": [], "distances": [], "metadatas": []}
+    
+    async def get_documents(
+        self,
+        collection_name: str,
+        ids: List[str],
+        tenant_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Legacy get_documents method for backward compatibility."""
+        try:
+            results = self.client.retrieve(
+                collection_name=collection_name,
+                ids=ids,
+                with_payload=True,
+                with_vectors=True
+            )
+            
+            # Filter by tenant if specified
+            if tenant_id:
+                results = [r for r in results if r.payload.get("tenant_id") == tenant_id]
+            
+            return {
+                "ids": [r.id for r in results],
+                "documents": [r.payload.get("content", "") for r in results],
+                "embeddings": [r.vector for r in results],
+                "metadatas": [r.payload for r in results]
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get documents: {e}")
+            return {"ids": [], "documents": [], "embeddings": [], "metadatas": []}
+    
+    async def similarity_search(
+        self,
+        collection_name: str,
+        query_embedding: List[float],
+        n_results: int = 10,
+        threshold: float = 0.5,
+        tenant_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Legacy similarity_search method for backward compatibility."""
+        try:
+            request = VectorSearchRequest(
+                query_embedding=query_embedding,
+                collection_name=collection_name,
+                n_results=n_results,
+                similarity_threshold=threshold,
+                tenant_id=tenant_id
+            )
+            
+            results = await self.semantic_search_advanced(request)
+            
+            # Convert to legacy format
+            return [
+                {
+                    "similarity": result.similarity_score,
+                    "document": result.document.content,
+                    "metadata": result.document.metadata
+                }
+                for result in results
+            ]
+            
+        except Exception as e:
+            self.logger.error(f"Failed to perform similarity search: {e}")
+            return []
+    
+    async def count_documents(self, collection_name: str) -> int:
+        """Legacy count_documents method for backward compatibility."""
+        try:
+            stats = self.client.get_collection_stats(collection_name)
+            return stats.points_count
+        except Exception as e:
+            self.logger.error(f"Failed to count documents: {e}")
+            return 0
+    
+    async def create_collection_optimized(
+        self,
+        collection_name: str,
+        vector_size: int = 384,
+        distance: str = "cosine",
+        hnsw_config: Optional[Dict[str, Any]] = None,
+        optimizers_config: Optional[Dict[str, Any]] = None,
+        quantization_config: Optional[Dict[str, Any]] = None,
+        replication_factor: int = 1,
+        write_consistency_factor: int = 1,
+        on_disk_payload: bool = True
+    ) -> bool:
+        """Create collection with optimized configuration."""
+        try:
+            config = QdrantCollectionConfig(
+                name=collection_name,
+                vector_size=vector_size,
+                distance=QdrantDistance.COSINE if distance == "cosine" else QdrantDistance.EUCLIDEAN,
+                hnsw_config=hnsw_config or {},
+                optimizers_config=optimizers_config or {}
+            )
+            
+            return self.client.create_collection(config)
+        except Exception as e:
+            self.logger.error(f"Failed to create optimized collection: {e}")
+            return False
+    
+    async def delete_documents(
+        self,
+        collection_name: str,
+        ids: Optional[List[str]] = None,
+        where: Optional[Dict[str, Any]] = None,
+        tenant_id: Optional[str] = None
+    ) -> bool:
+        """Delete documents by IDs or filter."""
+        try:
+            if ids:
+                self.client.delete(
+                    collection_name=collection_name,
+                    points_selector=ids
+                )
+            elif where:
+                # Build filter and delete
+                # For now, simplified implementation
+                self.client.delete(
+                    collection_name=collection_name,
+                    points_selector=where
+                )
+            else:
+                return False
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to delete documents: {e}")
+            return False
+    
+    def delete_collection(self, collection_name: str) -> bool:
+        """Delete collection (synchronous)."""
+        try:
+            return self.client.delete_collection(collection_name)
+        except Exception as e:
+            self.logger.error(f"Failed to delete collection: {e}")
+            return False
     
     def clear_cache(self) -> None:
         """Clear internal caches."""

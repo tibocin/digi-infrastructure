@@ -13,24 +13,27 @@ from uuid import uuid4
 from typing import List, Dict, Any
 import numpy as np
 
-from qdrant_client.models import (
-    Distance, CollectionInfo, PointStruct, Filter, FieldCondition, 
-    MatchValue, ScoredPoint, VectorParams, CollectionStatus
+# Use our custom types instead of external qdrant_client
+from pcs.repositories.qdrant_http_client import (
+    QdrantDistance, QdrantCollectionConfig, QdrantPoint, QdrantSearchResult
 )
 
-from pcs.repositories.qdrant_repo import (
-    EnhancedQdrantRepository,
-    QdrantRepository,  # Legacy alias
+# Import missing types
+from qdrant_client.models import Distance, PointStruct
+
+from pcs.repositories.qdrant_http_repo import (
+    EnhancedQdrantHTTPRepository,
     VectorDocument,
     SimilarityResult,
-    VectorSearchRequest,
-    BulkVectorOperation,
-    VectorCollectionStats,
     SimilarityAlgorithm,
     VectorIndexType,
-    QdrantDistance,
-    QdrantCollectionConfig
+    VectorCollectionStats,
+    BulkVectorOperation,
+    VectorSearchRequest
 )
+
+# Create alias for backward compatibility in tests
+QdrantRepository = EnhancedQdrantHTTPRepository
 from pcs.repositories.base import RepositoryError
 
 
@@ -48,11 +51,11 @@ def mock_qdrant_client():
     collection_info.config.params.vector.size = 384
     collection_info.config.params.hnsw_config = Mock()
     collection_info.config.params.hnsw_config.m = 16
-    collection_info.status = CollectionStatus.GREEN
+    collection_info.status = "green"  # Use string instead of enum
     
     # Mock search results
     scored_points = [
-        ScoredPoint(
+        Mock(
             id="doc1",
             version=1,
             score=0.95,
@@ -64,7 +67,7 @@ def mock_qdrant_client():
             },
             vector=[0.1, 0.2, 0.3]
         ),
-        ScoredPoint(
+        Mock(
             id="doc2",
             version=1,
             score=0.85,
@@ -120,7 +123,7 @@ def mock_qdrant_client():
 @pytest.fixture
 def repository(mock_qdrant_client):
     """Create an enhanced Qdrant repository for testing."""
-    return EnhancedQdrantRepository(client=mock_qdrant_client, use_async=False)
+    return EnhancedQdrantHTTPRepository(client=mock_qdrant_client, use_async=False)
 
 
 @pytest.fixture
@@ -137,11 +140,11 @@ def async_repository():
     collection_info.config.params.vector.size = 384
     collection_info.config.params.hnsw_config = Mock()
     collection_info.config.params.hnsw_config.m = 16
-    collection_info.status = CollectionStatus.GREEN
+    collection_info.status = "green"
     
     # Mock search results
     scored_points = [
-        ScoredPoint(
+        Mock(
             id="doc1",
             version=1,
             score=0.95,
@@ -166,7 +169,7 @@ def async_repository():
     mock_client.delete.return_value = Mock()
     mock_client.delete_collection.return_value = True
     
-    return EnhancedQdrantRepository(client=mock_client, use_async=True)
+    return EnhancedQdrantHTTPRepository(client=mock_client, use_async=True)
 
 
 @pytest.fixture
@@ -208,7 +211,7 @@ class TestEnhancedQdrantRepository:
 
     def test_initialization_with_client(self, mock_qdrant_client):
         """Test repository initialization with existing client."""
-        repo = EnhancedQdrantRepository(client=mock_qdrant_client)
+        repo = EnhancedQdrantHTTPRepository(client=mock_qdrant_client)
         assert repo.client == mock_qdrant_client
         assert repo._query_metrics == []
         assert repo._collection_cache == {}
@@ -216,20 +219,20 @@ class TestEnhancedQdrantRepository:
 
     def test_initialization_with_parameters(self):
         """Test repository initialization with connection parameters."""
-        with patch('pcs.repositories.qdrant_repo.QdrantClient') as mock_client_class:
-            repo = EnhancedQdrantRepository(
+        with patch('pcs.repositories.qdrant_http_repo.QdrantHTTPClient') as mock_client_class:
+            repo = EnhancedQdrantHTTPRepository(
                 host="localhost",
                 port=6333,
-                api_key="test_key",
-                https=True
+                api_key="test_key"
             )
             
             mock_client_class.assert_called_once_with(
-                url="https://localhost:6333",
-                grpc_port=6334,
-                prefer_grpc=True,
+                host="localhost",
+                port=6333,
                 api_key="test_key",
-                headers={'api-key': 'test_key'}
+                timeout=30.0,
+                max_retries=3,
+                retry_delay=1.0
             )
 
     @pytest.mark.asyncio
@@ -240,12 +243,17 @@ class TestEnhancedQdrantRepository:
             vector_size=384,
             distance=QdrantDistance.COSINE,
             hnsw_config={"m": 16, "ef_construct": 100},
-            optimizers_config={"deleted_threshold": 0.2},
-            quantization_config={"type": "scalar", "quantile": 0.99}
+            optimizers_config={"deleted_threshold": 0.2}
         )
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
-            result = await repository.create_collection_optimized(config)
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
+            result = await repository.create_collection(
+                collection_name=config.name,
+                vector_size=config.vector_size,
+                distance=config.distance,
+                hnsw_config=config.hnsw_config,
+                optimizers_config=config.optimizers_config
+            )
         
         assert result is True
         mock_qdrant_client.create_collection.assert_called_once()
@@ -261,7 +269,7 @@ class TestEnhancedQdrantRepository:
             tenant_id="tenant1"
         )
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             result = await repository.bulk_upsert_documents("test_collection", operation)
         
         assert result["total_processed"] == 3
@@ -282,7 +290,7 @@ class TestEnhancedQdrantRepository:
             tenant_id="tenant1"
         )
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             results = await repository.semantic_search_advanced(request)
         
         assert len(results) == 2  # Based on mock data
@@ -333,7 +341,7 @@ class TestEnhancedQdrantRepository:
         ]
         mock_qdrant_client.scroll.return_value = (scroll_points, None)
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             result = await repository.cluster_documents(
                 collection_name="test_collection",
                 n_clusters=2,
@@ -351,7 +359,7 @@ class TestEnhancedQdrantRepository:
         """Test clustering with empty collection."""
         mock_qdrant_client.scroll.return_value = ([], None)
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             result = await repository.cluster_documents("test_collection", n_clusters=2)
         
         assert result["clusters"] == []
@@ -360,7 +368,7 @@ class TestEnhancedQdrantRepository:
     @pytest.mark.asyncio
     async def test_get_collection_statistics(self, repository, mock_qdrant_client):
         """Test getting comprehensive collection statistics."""
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             stats = await repository.get_collection_statistics("test_collection")
         
         assert isinstance(stats, VectorCollectionStats)
@@ -379,7 +387,7 @@ class TestEnhancedQdrantRepository:
         ]
         mock_qdrant_client.scroll.return_value = (scroll_points, None)
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             stats = await repository.get_collection_statistics("test_collection", tenant_id="tenant1")
         
         assert isinstance(stats, VectorCollectionStats)
@@ -388,7 +396,7 @@ class TestEnhancedQdrantRepository:
     @pytest.mark.asyncio
     async def test_optimize_collection_performance(self, repository, mock_qdrant_client):
         """Test collection performance optimization."""
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             result = await repository.optimize_collection_performance("test_collection")
         
         assert "before_optimization" in result
@@ -399,7 +407,7 @@ class TestEnhancedQdrantRepository:
     @pytest.mark.asyncio
     async def test_export_embeddings_numpy(self, repository, mock_qdrant_client):
         """Test exporting embeddings in numpy format."""
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             result = await repository.export_embeddings(
                 collection_name="test_collection",
                 format_type="numpy",
@@ -416,7 +424,7 @@ class TestEnhancedQdrantRepository:
     @pytest.mark.asyncio
     async def test_export_embeddings_json(self, repository, mock_qdrant_client):
         """Test exporting embeddings in JSON format."""
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             result = await repository.export_embeddings(
                 collection_name="test_collection",
                 format_type="json",
@@ -431,7 +439,7 @@ class TestEnhancedQdrantRepository:
     @pytest.mark.asyncio
     async def test_export_embeddings_with_tenant(self, repository, mock_qdrant_client):
         """Test exporting embeddings with tenant filtering."""
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             result = await repository.export_embeddings(
                 collection_name="test_collection",
                 format_type="json",
@@ -901,7 +909,7 @@ class TestErrorHandling:
         ]
         mock_qdrant_client.scroll.return_value = (scroll_points, None)
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             with pytest.raises(RepositoryError, match="Failed to cluster documents"):
                 await repository.cluster_documents(
                     "test_collection",
@@ -921,7 +929,7 @@ class TestMultiTenancy:
             tenant_id="tenant1"
         )
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             await repository.semantic_search_advanced(request)
         
         # Verify tenant filter was applied
@@ -932,7 +940,7 @@ class TestMultiTenancy:
     @pytest.mark.asyncio
     async def test_tenant_isolation_in_export(self, repository, mock_qdrant_client):
         """Test that tenant isolation works in export operations."""
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             result = await repository.export_embeddings(
                 collection_name="test_collection",
                 tenant_id="tenant1"
@@ -978,7 +986,7 @@ class TestAsyncRepository:
             tenant_id="tenant1"
         )
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             results = await async_repository.semantic_search_advanced(request)
         
         assert isinstance(results, list)
@@ -992,7 +1000,7 @@ class TestAsyncRepository:
             vector_size=384
         )
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
             result = await async_repository.create_collection_optimized(config)
         
         assert result is True
