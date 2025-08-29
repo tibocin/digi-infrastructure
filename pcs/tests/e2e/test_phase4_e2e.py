@@ -270,7 +270,7 @@ class TestPhase4EndToEnd:
                 "id": str(uuid.uuid4()),
                 "name": f"search-template-{i}",
                 "description": f"Template {i} for semantic search testing with AI and machine learning content",
-                "content": f"Generate content about {["AI", "ML", "data science", "automation", "robotics"][i]}",
+                "content": f"Generate content about {['AI', 'ML', 'data science', 'automation', 'robotics'][i]}",
                 "tags": ["search", "ai", "ml", "testing"]
             }
             templates.append(template)

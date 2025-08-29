@@ -15,7 +15,7 @@ from typing import List, Dict, Any
 # Import Phase 4 enhanced components
 from src.pcs.repositories.postgres_repo import OptimizedPostgreSQLRepository
 from src.pcs.repositories.neo4j_repo import Neo4jRepository
-from src.pcs.repositories.chroma_repo import EnhancedChromaRepository
+from src.pcs.repositories.qdrant_http_repo import EnhancedQdrantHTTPRepository
 from src.pcs.repositories.redis_repo import EnhancedRedisRepository
 from src.pcs.core.connection_pool_manager import get_connection_pool_manager
 from src.pcs.utils.metrics import get_metrics_collector
