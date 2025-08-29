@@ -1,13 +1,13 @@
 """
 Filepath: src/pcs/core/config.py
 Purpose: Application configuration management using Pydantic settings
-Related Components: Environment variables, Database settings, Security config
-Tags: config, settings, environment, pydantic, validation
+Related Components: Environment variables, Database settings, Security config, Qdrant settings
+Tags: config, settings, environment, pydantic, validation, qdrant
 """
 
 import os
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pathlib import Path
 
 from pydantic import field_validator, Field
@@ -108,6 +108,71 @@ class RedisSettings(BaseSettings):
     )
 
 
+class QdrantSettings(BaseSettings):
+    """Qdrant vector database configuration."""
+    
+    host: str = Field(default="localhost", description="Qdrant host")
+    port: int = Field(default=6333, description="Qdrant HTTP port")
+    grpc_port: int = Field(default=6334, description="Qdrant gRPC port")
+    api_key: Optional[str] = Field(default=None, description="Qdrant API key")
+    prefer_grpc: bool = Field(default=True, description="Prefer gRPC over HTTP")
+    use_https: bool = Field(default=False, description="Use HTTPS connection")
+    
+    # Collection namespace configuration from environment variables
+    collection_digi_core: str = Field(default="digi_core_knowledge", description="Digi-core knowledge collection")
+    collection_lernmi: str = Field(default="lernmi_knowledge", description="Lernmi knowledge collection")
+    collection_beep_boop: str = Field(default="beep_boop_knowledge", description="Beep-boop knowledge collection")
+    collection_pcs: str = Field(default="pcs_knowledge", description="PCS knowledge collection")
+    collection_stackr: str = Field(default="stackr_knowledge", description="Stackr knowledge collection")
+    collection_satsflow: str = Field(default="satsflow_knowledge", description="Satsflow knowledge collection")
+    collection_bitscrow: str = Field(default="bitscrow_knowledge", description="Bitscrow knowledge collection")
+    collection_devao: str = Field(default="devao_knowledge", description="Devao knowledge collection")
+    collection_revao: str = Field(default="revao_knowledge", description="Revao knowledge collection")
+    collection_tibocin_xyz: str = Field(default="tibocin_xyz_knowledge", description="Tibocin XYZ knowledge collection")
+    collection_lumi_adventures: str = Field(default="lumi_adventures_knowledge", description="Lumi Adventures knowledge collection")
+    
+    # Default collection settings
+    default_vector_size: int = Field(default=384, description="Default vector dimensions")
+    default_distance_metric: str = Field(default="cosine", description="Default distance metric")
+    enable_quantization: bool = Field(default=True, description="Enable vector quantization")
+    quantization_type: str = Field(default="scalar", description="Quantization type (scalar, product, binary)")
+    
+    # Multi-tenancy settings
+    enforce_tenant_isolation: bool = Field(default=True, description="Enforce tenant data isolation")
+    
+    @property
+    def collection_namespaces(self) -> Dict[str, str]:
+        """Get all collection namespaces as a dictionary."""
+        return {
+            "digi_core": self.collection_digi_core,
+            "lernmi": self.collection_lernmi,
+            "beep_boop": self.collection_beep_boop,
+            "pcs": self.collection_pcs,
+            "stackr": self.collection_stackr,
+            "satsflow": self.collection_satsflow,
+            "bitscrow": self.collection_bitscrow,
+            "devao": self.collection_devao,
+            "revao": self.collection_revao,
+            "tibocin_xyz": self.collection_tibocin_xyz,
+            "lumi_adventures": self.collection_lumi_adventures,
+        }
+    
+    def get_collection_name(self, app_name: str) -> str:
+        """Get collection name for a specific application."""
+        app_key = app_name.lower().replace("-", "_").replace(" ", "_")
+        return self.collection_namespaces.get(app_key, f"{app_name}_knowledge")
+    
+    def get_all_collections(self) -> List[str]:
+        """Get list of all collection names."""
+        return list(self.collection_namespaces.values())
+    
+    model_config = ConfigDict(
+        env_prefix="QDRANT_",
+        env_file=".env",
+        case_sensitive=False
+    )
+
+
 class LoggingSettings(BaseSettings):
     """Logging configuration."""
     
@@ -144,6 +209,7 @@ class Settings(BaseSettings):
     security: SecuritySettings
     database: DatabaseSettings
     redis: RedisSettings
+    qdrant: QdrantSettings
     logging: LoggingSettings
     
     # CORS
@@ -157,6 +223,7 @@ class Settings(BaseSettings):
         kwargs.setdefault('security', SecuritySettings())
         kwargs.setdefault('database', DatabaseSettings())
         kwargs.setdefault('redis', RedisSettings())
+        kwargs.setdefault('qdrant', QdrantSettings())
         kwargs.setdefault('logging', LoggingSettings())
         
         super().__init__(**kwargs)
@@ -214,6 +281,16 @@ def get_test_settings() -> Settings:
             host="localhost",
             port=6379,
             db=15  # Use different DB for tests
+        ),
+        "qdrant": QdrantSettings(
+            host="localhost",
+            port=6333,
+            grpc_port=6334,
+            # Use test collection names
+            collection_digi_core="test_digi_core",
+            collection_lernmi="test_lernmi",
+            collection_beep_boop="test_beep_boop",
+            collection_pcs="test_pcs"
         ),
         "security": SecuritySettings(
             secret_key="test_secret_key_that_is_long_enough_for_validation_purposes",
