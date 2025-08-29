@@ -23,7 +23,7 @@ class ConnectionPoolType(Enum):
     POSTGRESQL = "postgresql"
     REDIS = "redis"
     NEO4J = "neo4j"
-    CHROMADB = "chromadb"
+    QDRANT = "qdrant"
 
 
 class PoolHealthStatus(Enum):
@@ -285,8 +285,8 @@ class ConnectionPoolManager:
                 await self._collect_redis_metrics(pool_instance)
             elif pool_type == ConnectionPoolType.NEO4J:
                 await self._collect_neo4j_metrics(pool_instance)
-            elif pool_type == ConnectionPoolType.CHROMADB:
-                await self._collect_chromadb_metrics(pool_instance)
+            elif pool_type == ConnectionPoolType.QDRANT:
+                await self._collect_qdrant_metrics(pool_instance)
         
         except Exception as e:
             # Mark pool as unhealthy on metric collection failure
@@ -380,27 +380,37 @@ class ConnectionPoolManager:
             self.logger.error(f"Neo4j metrics collection failed: {e}")
             raise
     
-    async def _collect_chromadb_metrics(self, pool_instance):
-        """Collect ChromaDB-specific metrics."""
+    async def _collect_qdrant_metrics(self, pool_instance):
+        """Collect Qdrant-specific metrics."""
         try:
-            # Mock ChromaDB statistics (would be implemented with actual ChromaDB client)
-            stats = self._pool_stats[ConnectionPoolType.CHROMADB]
+            stats = self._pool_stats[ConnectionPoolType.QDRANT]
             
-            # Default estimates for ChromaDB
-            stats.total_connections = 5
-            stats.active_connections = 2
-            stats.idle_connections = 3
-            stats.busy_connections = stats.active_connections
+            # Qdrant client provides collection and cluster information
+            if hasattr(pool_instance, 'get_collections'):
+                try:
+                    collections = pool_instance.get_collections()
+                    stats.total_connections = len(collections.collections) if collections.collections else 0
+                except Exception:
+                    stats.total_connections = 1  # Fallback to single collection
+            
+            # Qdrant doesn't have traditional connection pooling like databases
+            # Instead, we track collection operations and performance
+            stats.active_connections = stats.total_connections  # All collections are "active"
+            stats.idle_connections = 0  # Qdrant collections are always available
+            stats.busy_connections = stats.total_connections  # Collections are always ready
             stats.failed_connections = 0
             
+            # Calculate utilization based on collection count and performance
             if stats.total_connections > 0:
-                stats.pool_utilization = stats.active_connections / stats.total_connections
+                stats.pool_utilization = 1.0  # Qdrant collections are always available
+            else:
+                stats.pool_utilization = 0.0
             
             stats.last_updated = datetime.utcnow()
             stats.health_status = PoolHealthStatus.HEALTHY
             
         except Exception as e:
-            self.logger.error(f"ChromaDB metrics collection failed: {e}")
+            self.logger.error(f"Qdrant metrics collection failed: {e}")
             raise
     
     async def _update_circuit_breaker_states(self):

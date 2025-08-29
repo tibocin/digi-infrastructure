@@ -314,6 +314,29 @@ class TestConnectionPoolManager:
 
 
     @pytest.mark.asyncio
+    async def test_collect_qdrant_metrics(self, pool_manager, mock_health_check):
+        """Test Qdrant metrics collection."""
+        mock_qdrant = Mock()
+        mock_collections = Mock()
+        mock_collections.collections = [Mock(), Mock(), Mock()]  # 3 collections
+        mock_qdrant.get_collections.return_value = mock_collections
+        
+        pool_manager.register_pool(
+            ConnectionPoolType.QDRANT,
+            mock_qdrant,
+            mock_health_check
+        )
+        
+        await pool_manager._collect_qdrant_metrics(mock_qdrant)
+        
+        stats = pool_manager._pool_stats[ConnectionPoolType.QDRANT]
+        assert stats.total_connections == 3
+        assert stats.active_connections == 3
+        assert stats.pool_utilization == 1.0
+        assert stats.health_status == PoolHealthStatus.HEALTHY
+
+
+    @pytest.mark.asyncio
     async def test_update_circuit_breaker_states(self, pool_manager, mock_postgresql_pool, mock_health_check):
         """Test circuit breaker state updates."""
         pool_manager.register_pool(
@@ -545,6 +568,7 @@ class TestEnums:
         assert ConnectionPoolType.POSTGRESQL.value == "postgresql"
         assert ConnectionPoolType.REDIS.value == "redis"
         assert ConnectionPoolType.NEO4J.value == "neo4j"
+        assert ConnectionPoolType.QDRANT.value == "qdrant"
 
     def test_pool_health_status_values(self):
         """Test PoolHealthStatus enum values."""
