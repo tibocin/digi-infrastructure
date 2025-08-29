@@ -312,23 +312,6 @@ class TestConnectionPoolManager:
         assert stats.active_connections == 3
         assert stats.health_status == PoolHealthStatus.HEALTHY
 
-    @pytest.mark.asyncio
-    async def test_collect_chromadb_metrics(self, pool_manager, mock_health_check):
-        """Test ChromaDB metrics collection."""
-        mock_chromadb = Mock()
-        
-        pool_manager.register_pool(
-            ConnectionPoolType.CHROMADB,
-            mock_chromadb,
-            mock_health_check
-        )
-        
-        await pool_manager._collect_chromadb_metrics(mock_chromadb)
-        
-        stats = pool_manager._pool_stats[ConnectionPoolType.CHROMADB]
-        assert stats.total_connections == 5
-        assert stats.active_connections == 2
-        assert stats.health_status == PoolHealthStatus.HEALTHY
 
     @pytest.mark.asyncio
     async def test_update_circuit_breaker_states(self, pool_manager, mock_postgresql_pool, mock_health_check):
@@ -562,7 +545,6 @@ class TestEnums:
         assert ConnectionPoolType.POSTGRESQL.value == "postgresql"
         assert ConnectionPoolType.REDIS.value == "redis"
         assert ConnectionPoolType.NEO4J.value == "neo4j"
-        assert ConnectionPoolType.CHROMADB.value == "chromadb"
 
     def test_pool_health_status_values(self):
         """Test PoolHealthStatus enum values."""
