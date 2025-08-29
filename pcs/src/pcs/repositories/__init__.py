@@ -24,11 +24,11 @@ except ImportError:
     _has_neo4j = False
 
 try:
-    from .chroma_repo import ChromaRepository
-    _has_chroma = True
+    from .qdrant_repo import QdrantRepository
+    _has_qdrant = True
 except ImportError:
-    ChromaRepository = None
-    _has_chroma = False
+    QdrantRepository = None
+    _has_qdrant = False
 
 __all__ = [
     "AbstractRepository",
@@ -42,5 +42,5 @@ if _has_redis:
     __all__.append("RedisRepository")
 if _has_neo4j:
     __all__.append("Neo4jRepository")
-if _has_chroma:
-    __all__.append("ChromaRepository")
+if _has_qdrant:
+    __all__.append("QdrantRepository")
