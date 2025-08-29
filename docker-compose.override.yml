@@ -19,9 +19,10 @@ services:
       - "7474:7474" # Browser interface
       - "7687:7687" # Bolt protocol
 
-  chroma:
+  qdrant:
     ports:
-      - "8001:8000" # HTTP API
+      - "6333:6333" # HTTP API
+      - "6334:6334" # gRPC API
 
   redis:
     ports:
@@ -34,4 +35,3 @@ services:
   prometheus:
     ports:
       - "9090:9090" # Metrics interface
-

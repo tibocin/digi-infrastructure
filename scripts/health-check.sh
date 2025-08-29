@@ -8,6 +8,12 @@
 
 set -e
 
+# Get Qdrant API key from .env file
+if [ -f .env ]; then
+    QDRANT_API_KEY=$(grep '^QDRANT_API_KEY=' .env | cut -d'=' -f2)
+    export QDRANT_API_KEY
+fi
+
 echo "🔍 Checking infrastructure health..."
 
 # Check if containers are running
@@ -22,9 +28,9 @@ docker compose exec -T postgres pg_isready -U digi
 echo "🕸️  Checking Neo4j..."
 curl -f http://localhost:7474/browser/ || echo "Neo4j not accessible"
 
-# Check ChromaDB
-echo "🔍 Checking ChromaDB..."
-echo "ChromaDB container is running (port 8001->8000)" && echo "ChromaDB accessible"
+# Check Qdrant
+echo "🔍 Checking Qdrant..."
+curl -H "api-key: ${QDRANT_API_KEY:-}" -f http://localhost:6333/collections || echo "Qdrant not accessible"
 
 # Check Redis
 echo "🔴 Checking Redis..."

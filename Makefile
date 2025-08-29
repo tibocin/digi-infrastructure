@@ -72,7 +72,7 @@ setup: ## Initial setup and configuration
 	@echo "  - Grafana: http://localhost:3000"
 	@echo "  - Prometheus: http://localhost:9090"
 	@echo "  - Neo4j Browser: http://localhost:7474"
-	@echo "  - ChromaDB: http://localhost:8001"
+	@echo "  - Qdrant: http://localhost:6333"
 
 dev: ## Start with development overrides
 	docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
