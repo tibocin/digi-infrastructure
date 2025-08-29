@@ -10,7 +10,7 @@ import time
 import statistics
 from typing import Dict, List, Any, Optional, Callable, Union
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import Enum
 from collections import defaultdict, deque
 import logging
@@ -233,7 +233,7 @@ class ConnectionPoolManager:
             avg_response_time_ms=0.0,
             error_rate=0.0,
             health_status=PoolHealthStatus.HEALTHY,
-            last_updated=datetime.utcnow(),
+            last_updated=datetime.now(UTC),
             max_pool_size=max_size,
             min_pool_size=min_size
         )
@@ -311,7 +311,7 @@ class ConnectionPoolManager:
                 if stats.total_connections > 0:
                     stats.pool_utilization = stats.active_connections / stats.total_connections
                 
-                stats.last_updated = datetime.utcnow()
+                stats.last_updated = datetime.now(UTC)
                 stats.health_status = PoolHealthStatus.HEALTHY
                 
                 # Record performance metrics
@@ -350,7 +350,7 @@ class ConnectionPoolManager:
             if stats.total_connections > 0:
                 stats.pool_utilization = stats.active_connections / stats.total_connections
             
-            stats.last_updated = datetime.utcnow()
+            stats.last_updated = datetime.now(UTC)
             stats.health_status = PoolHealthStatus.HEALTHY
             
         except Exception as e:
@@ -373,7 +373,7 @@ class ConnectionPoolManager:
             if stats.total_connections > 0:
                 stats.pool_utilization = stats.active_connections / stats.total_connections
             
-            stats.last_updated = datetime.utcnow()
+            stats.last_updated = datetime.now(UTC)
             stats.health_status = PoolHealthStatus.HEALTHY
             
         except Exception as e:
@@ -406,7 +406,7 @@ class ConnectionPoolManager:
             else:
                 stats.pool_utilization = 0.0
             
-            stats.last_updated = datetime.utcnow()
+            stats.last_updated = datetime.now(UTC)
             stats.health_status = PoolHealthStatus.HEALTHY
             
         except Exception as e:
@@ -548,7 +548,7 @@ class ConnectionPoolManager:
                         "total_connections": total_connections,
                         "active_connections": active_connections,
                         "overall_utilization": avg_utilization,
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(UTC).isoformat()
                     },
                     "pool_details": {
                         pool_type.value: stats.to_dict() 
@@ -564,7 +564,7 @@ class ConnectionPoolManager:
             return {
                 "overall_status": "error",
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }
     
     async def get_pool_stats(self, pool_type: Optional[ConnectionPoolType] = None) -> Dict[str, Any]:

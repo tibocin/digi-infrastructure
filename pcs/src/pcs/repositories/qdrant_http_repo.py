@@ -1153,7 +1153,16 @@ class EnhancedQdrantHTTPRepository:
                 optimizers_config=optimizers_config or {}
             )
             
-            return self.client.create_collection(config)
+            if self._is_async:
+                result = await self.client.create_collection_async(collection_name, config)
+            else:
+                result = self.client.create_collection(config)
+            
+            # Update collection cache
+            if result:
+                self._collection_cache[collection_name] = {}
+                
+            return result
         except Exception as e:
             self.logger.error(f"Failed to create optimized collection: {e}")
             return False

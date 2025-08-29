@@ -8,7 +8,7 @@ Tags: neo4j, graph-database, relationships, cypher, async
 import time
 from typing import Any, Dict, List, Optional, Union, Tuple
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from dataclasses import dataclass
 from enum import Enum
 
@@ -185,7 +185,7 @@ class Neo4jRepository:
                 from uuid import uuid4
                 properties["id"] = str(uuid4())
             if "created_at" not in properties:
-                properties["created_at"] = datetime.utcnow().isoformat()
+                properties["created_at"] = datetime.now(UTC).isoformat()
             
             query = f"CREATE (n:{label} $props) RETURN n"
             result = await self.execute_cypher(query, {"props": properties})
@@ -252,7 +252,7 @@ class Neo4jRepository:
         """
         try:
             rel_props = properties or {}
-            rel_props["created_at"] = datetime.utcnow().isoformat()
+            rel_props["created_at"] = datetime.now(UTC).isoformat()
             
             query = f"""
             MATCH (from), (to)
@@ -496,7 +496,7 @@ class Neo4jRepository:
                         to_node_id=UUID(rel_data.end_node["id"]),
                         type=rel_data.type,
                         properties=dict(rel_data),
-                        created_at=datetime.fromisoformat(rel_data.get("created_at", datetime.utcnow().isoformat()))
+                        created_at=datetime.fromisoformat(rel_data.get("created_at", datetime.now(UTC).isoformat()))
                     ))
                 
                 # Add path
@@ -582,8 +582,8 @@ class Neo4jRepository:
                 similar_pattern = await self.analyze_conversation_patterns(
                     user_id=user_id,
                     time_range=(
-                        datetime.utcnow() - timedelta(days=30),
-                        datetime.utcnow()
+                        datetime.now(UTC) - timedelta(days=30),
+                        datetime.now(UTC)
                     )
                 )
                 similar_patterns.append(similar_pattern)

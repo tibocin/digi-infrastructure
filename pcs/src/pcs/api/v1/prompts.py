@@ -8,7 +8,7 @@ Tags: api, prompts, crud, versioning, generation, fastapi
 import time
 from typing import List, Optional, Dict, Any
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
@@ -702,7 +702,7 @@ async def generate_prompt(
             variables_resolved=service_request.variables,
             cache_hit=False,
             metadata={"optimization_level": service_request.optimization_level.value},
-            created_at=datetime.utcnow()
+            created_at=datetime.now(UTC)
         )
     
     except HTTPException:

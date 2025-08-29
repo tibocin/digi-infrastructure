@@ -8,7 +8,7 @@ Tags: api, contexts, crud, merging, relationships, caching, fastapi
 import time
 from typing import List, Optional, Dict, Any, Set
 from uuid import UUID, uuid4
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
@@ -802,7 +802,7 @@ async def merge_contexts(
             # Create new context
             result_context = Context(
                 context_type_id=source_contexts[0].context_type_id,
-                name=f"Merged Context {datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+                name=f"Merged Context {datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}",
                 description="Merged from multiple contexts",
                 scope=get_most_restrictive_scope([ctx.scope for ctx in source_contexts]),  # Most restrictive scope
                 owner_id=current_user.get('id'),
@@ -812,7 +812,7 @@ async def merge_contexts(
                     "merge_info": {
                         "source_ids": [str(ctx.id) for ctx in source_contexts],
                         "merge_strategy": merge_request.merge_strategy.value,
-                        "merged_at": datetime.utcnow().isoformat()
+                        "merged_at": datetime.now(UTC).isoformat()
                     }
                 },
                 is_active=True,
@@ -830,7 +830,7 @@ async def merge_contexts(
                     "merge_info": {
                         "source_ids": [str(ctx.id) for ctx in source_contexts],
                         "merge_strategy": merge_request.merge_strategy.value,
-                        "merged_at": datetime.utcnow().isoformat()
+                        "merged_at": datetime.now(UTC).isoformat()
                     }
                 }
             })
@@ -850,7 +850,7 @@ async def merge_contexts(
                 "preserve_metadata": merge_request.preserve_metadata
             },
             processing_time_ms=processing_time,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(UTC)
         )
     
     except HTTPException:

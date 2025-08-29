@@ -10,7 +10,7 @@ import json
 import logging
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Union
 from dataclasses import dataclass, asdict
@@ -256,7 +256,7 @@ class BackgroundTaskService:
         task_data = task.model_dump_json()
         
         # Add to appropriate queue based on scheduling
-        if scheduled_for and scheduled_for > datetime.utcnow():
+        if scheduled_for and scheduled_for > datetime.now(UTC):
             # Add to delayed queue with score as timestamp
             score = scheduled_for.timestamp()
             await self.redis_client.zadd("pcs:tasks:scheduled", {task_data: score})
@@ -403,7 +403,7 @@ class BackgroundTaskService:
         
         while not self._shutdown_event.is_set():
             try:
-                current_time = datetime.utcnow().timestamp()
+                current_time = datetime.now(UTC).timestamp()
                 
                 # Get tasks scheduled for now or earlier
                 scheduled_tasks = await self.redis_client.zrangebyscore(
@@ -490,7 +490,7 @@ class BackgroundTaskService:
                 f"pcs:tasks:meta:{task.id}",
                 mapping={
                     "status": TaskStatus.RUNNING.value,
-                    "started_at": datetime.utcnow().isoformat(),
+                    "started_at": datetime.now(UTC).isoformat(),
                     "worker": worker_name
                 }
             )
@@ -553,7 +553,7 @@ class BackgroundTaskService:
         execution_time: float
     ) -> None:
         """Mark task as completed with result."""
-        completed_at = datetime.utcnow()
+        completed_at = datetime.now(UTC)
         
         # Serialize result
         try:
@@ -605,7 +605,7 @@ class BackgroundTaskService:
                 f"pcs:tasks:meta:{task.id}",
                 mapping={
                     "status": TaskStatus.FAILED.value,
-                    "completed_at": datetime.utcnow().isoformat(),
+                    "completed_at": datetime.now(UTC).isoformat(),
                     "execution_time": str(execution_time),
                     "error": error_msg
                 }
@@ -628,7 +628,7 @@ class BackgroundTaskService:
         """Schedule task for retry with exponential backoff."""
         # Calculate retry delay with exponential backoff
         delay = task.retry_delay * (2 ** (retry_count - 1))
-        retry_time = datetime.utcnow() + timedelta(seconds=delay)
+        retry_time = datetime.now(UTC) + timedelta(seconds=delay)
         
         # Update task metadata
         await self.redis_client.hset(

@@ -9,7 +9,7 @@ import json
 import time
 import hashlib
 from typing import Any, Dict, List, Optional, Set, Union, Tuple, Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from uuid import UUID, uuid4
 from dataclasses import dataclass
 from enum import Enum
@@ -95,9 +95,9 @@ class CacheEntry:
         if self.dependencies is None:
             self.dependencies = []
         if self.created_at is None:
-            self.created_at = datetime.utcnow()
+            self.created_at = datetime.now(UTC)
         if self.last_accessed is None:
-            self.last_accessed = datetime.utcnow()
+            self.last_accessed = datetime.now(UTC)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation."""
@@ -130,7 +130,7 @@ class CacheStats:
     
     def __post_init__(self):
         if self.last_updated is None:
-            self.last_updated = datetime.utcnow()
+            self.last_updated = datetime.now(UTC)
         if self.total_operations > 0:
             self.hit_ratio = self.hits / self.total_operations
     
@@ -161,7 +161,7 @@ class InvalidationRequest:
     
     def __post_init__(self):
         if self.created_at is None:
-            self.created_at = datetime.utcnow()
+            self.created_at = datetime.now(UTC)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation."""
@@ -294,7 +294,7 @@ class EnhancedRedisRepository:
             (1 - alpha) * self._cache_stats.avg_response_time_ms
         )
         
-        self._cache_stats.last_updated = datetime.utcnow()
+        self._cache_stats.last_updated = datetime.now(UTC)
 
     def _manage_l1_cache(self, key: str, value: Any = None, remove: bool = False):
         """Manage L1 (in-memory) cache for hot data."""
@@ -483,7 +483,7 @@ class EnhancedRedisRepository:
                         # Update access metadata if requested
                         if update_access:
                             metadata_key = f"meta:{key}"
-                            await self.redis.hset(metadata_key, "last_accessed", datetime.utcnow().isoformat())
+                            await self.redis.hset(metadata_key, "last_accessed", datetime.now(UTC).isoformat())
                             await self.redis.hincrby(metadata_key, "access_count", 1)
                         
                         # Promote to L1 cache for frequently accessed data
@@ -793,7 +793,7 @@ class EnhancedRedisRepository:
                 # Update statistics
                 self._cache_stats.memory_usage_mb = memory_usage_mb
                 self._cache_stats.total_keys = dbsize
-                self._cache_stats.last_updated = datetime.utcnow()
+                self._cache_stats.last_updated = datetime.now(UTC)
                 
                 monitor.set_rows_affected(1)
                 return self._cache_stats

@@ -12,7 +12,7 @@ import time
 import sys
 import tracemalloc
 from typing import Dict, Any, List, Optional, Tuple, Callable, Union
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from dataclasses import dataclass, field
 from enum import Enum
 from collections import defaultdict, deque
@@ -169,7 +169,7 @@ class BottleneckAnalyzer:
         
         # Store analysis history
         self._analysis_history.append({
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(UTC),
             "bottlenecks_found": len(bottlenecks),
             "critical_count": len([b for b in bottlenecks if b.severity == BottleneckSeverity.CRITICAL]),
             "high_count": len([b for b in bottlenecks if b.severity == BottleneckSeverity.HIGH])
@@ -206,7 +206,7 @@ class BottleneckAnalyzer:
                                 "Consider query result caching",
                                 "Review WHERE clause efficiency"
                             ],
-                            detected_at=datetime.utcnow(),
+                            detected_at=datetime.now(UTC),
                             metadata={"query": query['query'][:200], "calls": query['calls']}
                         ))
             
@@ -228,7 +228,7 @@ class BottleneckAnalyzer:
                         "Review long-running transactions",
                         "Consider read replicas for read-heavy operations"
                     ],
-                    detected_at=datetime.utcnow()
+                    detected_at=datetime.now(UTC)
                 ))
                 
         except Exception as e:
@@ -261,7 +261,7 @@ class BottleneckAnalyzer:
                         "Optimize data structures",
                         "Implement garbage collection tuning"
                     ],
-                    detected_at=datetime.utcnow(),
+                    detected_at=datetime.now(UTC),
                     metadata={"total_mb": memory.total // 1024 // 1024, "used_mb": memory.used // 1024 // 1024}
                 ))
             
@@ -284,7 +284,7 @@ class BottleneckAnalyzer:
                             "Check for circular references",
                             "Implement memory monitoring"
                         ],
-                        detected_at=datetime.utcnow()
+                        detected_at=datetime.now(UTC)
                     ))
                     
         except Exception as e:
@@ -317,7 +317,7 @@ class BottleneckAnalyzer:
                         "Review algorithmic complexity",
                         "Consider caching for expensive computations"
                     ],
-                    detected_at=datetime.utcnow()
+                    detected_at=datetime.now(UTC)
                 ))
                 
         except Exception as e:
@@ -350,7 +350,7 @@ class BottleneckAnalyzer:
                             "Consider SSD storage",
                             "Batch I/O operations"
                         ],
-                        detected_at=datetime.utcnow()
+                        detected_at=datetime.now(UTC)
                     ))
                     
         except Exception as e:
@@ -386,7 +386,7 @@ class BottleneckAnalyzer:
                                 "Review cache TTL settings",
                                 "Consider cache partitioning"
                             ],
-                            detected_at=datetime.utcnow(),
+                            detected_at=datetime.now(UTC),
                             metadata={"operation": operation, "stats": stats}
                         ))
                         
@@ -423,7 +423,7 @@ class BottleneckAnalyzer:
                         "Implement connection sharing",
                         "Review connection timeout settings"
                     ],
-                    detected_at=datetime.utcnow()
+                    detected_at=datetime.now(UTC)
                 ))
                 
         except Exception as e:
@@ -529,7 +529,7 @@ class PerformanceOptimizer:
                     after_metrics=before_metrics,
                     improvement_percent=0.0,
                     execution_time=time.time() - start_time,
-                    applied_at=datetime.utcnow(),
+                    applied_at=datetime.now(UTC),
                     notes="No optimization function available"
                 )
             
@@ -554,7 +554,7 @@ class PerformanceOptimizer:
                 after_metrics=after_metrics,
                 improvement_percent=improvement_percent,
                 execution_time=time.time() - start_time,
-                applied_at=datetime.utcnow(),
+                applied_at=datetime.now(UTC),
                 notes="Optimization applied successfully" if success else "Optimization failed"
             )
             
@@ -575,7 +575,7 @@ class PerformanceOptimizer:
                 after_metrics=after_metrics,
                 improvement_percent=0.0,
                 execution_time=time.time() - start_time,
-                applied_at=datetime.utcnow(),
+                applied_at=datetime.now(UTC),
                 notes=f"Optimization failed: {str(e)}"
             )
             
@@ -847,7 +847,7 @@ class PerformanceBenchmark:
                 p99_response_time_ms=0,
                 memory_usage_mb=0,
                 cpu_usage_percent=0,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 test_duration=0,
                 metadata={"error": "No database session available"}
             )
@@ -892,7 +892,7 @@ class PerformanceBenchmark:
                 p99_response_time_ms=statistics.quantiles(response_times, n=100)[98] if len(response_times) > 100 else max(response_times),
                 memory_usage_mb=end_memory - start_memory,
                 cpu_usage_percent=(start_cpu + end_cpu) / 2,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 test_duration=test_duration,
                 metadata={"operations_count": operations_count}
             )
@@ -905,7 +905,7 @@ class PerformanceBenchmark:
                 p99_response_time_ms=0,
                 memory_usage_mb=0,
                 cpu_usage_percent=0,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 test_duration=test_duration,
                 metadata={"error": "No successful operations"}
             )
@@ -925,7 +925,7 @@ class PerformanceBenchmark:
             data_structures.append({
                 "id": i,
                 "data": f"test_data_{i}",
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(UTC),
                 "metadata": {"value": i * 2}
             })
         
@@ -948,7 +948,7 @@ class PerformanceBenchmark:
             p99_response_time_ms=0,
             memory_usage_mb=end_memory - start_memory,
             cpu_usage_percent=psutil.cpu_percent(interval=0.1),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             test_duration=test_duration,
             metadata={"operations_count": operations_count}
         )
@@ -984,7 +984,7 @@ class PerformanceBenchmark:
             p99_response_time_ms=statistics.quantiles(response_times, n=100)[98] if len(response_times) > 100 else max(response_times),
             memory_usage_mb=sys.getsizeof(cache) / 1024 / 1024,
             cpu_usage_percent=psutil.cpu_percent(interval=0.1),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             test_duration=test_duration,
             metadata={"operations_count": operations_count}
         )
@@ -1012,7 +1012,7 @@ class PerformanceBenchmark:
             p99_response_time_ms=0,
             memory_usage_mb=0,
             cpu_usage_percent=psutil.cpu_percent(interval=0.1),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             test_duration=test_duration,
             metadata={"operations_count": operations_count, "concurrency": "full"}
         )
@@ -1059,7 +1059,7 @@ class PerformanceBenchmark:
                 p99_response_time_ms=statistics.quantiles(response_times, n=100)[98] if len(response_times) > 100 else max(response_times),
                 memory_usage_mb=0,
                 cpu_usage_percent=psutil.cpu_percent(interval=0.1),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 test_duration=test_duration,
                 metadata={"operations_count": len(response_times)}
             )
@@ -1072,7 +1072,7 @@ class PerformanceBenchmark:
                 p99_response_time_ms=0,
                 memory_usage_mb=0,
                 cpu_usage_percent=0,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 test_duration=test_duration,
                 metadata={"error": "No successful operations"}
             )
@@ -1131,7 +1131,7 @@ class PerformanceOptimizationService:
         
         report = {
             "cycle_id": f"opt_cycle_{int(time.time())}",
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
             "duration_seconds": cycle_duration,
             "bottlenecks_analyzed": len(bottlenecks),
             "optimizations_applied": len(optimization_results),
@@ -1211,7 +1211,7 @@ class PerformanceOptimizationService:
         cpu = psutil.cpu_percent(interval=1)
         
         status = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "system_health": "healthy" if memory.percent < 80 and cpu < 80 else "degraded",
             "memory_usage_percent": memory.percent,
             "cpu_usage_percent": cpu,

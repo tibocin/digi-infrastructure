@@ -9,7 +9,7 @@ import time
 import asyncio
 from typing import Dict, Any, Optional, Callable, List
 from functools import wraps
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from dataclasses import dataclass
 import logging
 
@@ -65,7 +65,7 @@ class MetricsCollector:
             query_type=query_type,
             execution_time=execution_time,
             rows_affected=rows_affected,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             table_name=table_name,
             query_hash=query_hash,
             connection_pool_stats=connection_pool_stats
@@ -91,7 +91,7 @@ class MetricsCollector:
             Dictionary with aggregated metrics
         """
         if time_window:
-            cutoff_time = datetime.utcnow() - time_window
+            cutoff_time = datetime.now(UTC) - time_window
             filtered_metrics = [m for m in self._metrics if m.timestamp >= cutoff_time]
         else:
             filtered_metrics = self._metrics
@@ -135,7 +135,7 @@ class MetricsCollector:
         Returns:
             Dictionary with trends by query type
         """
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=hours)
         recent_metrics = [m for m in self._metrics if m.timestamp >= cutoff_time]
         
         if not recent_metrics:
@@ -180,7 +180,7 @@ class MetricsCollector:
     
     def _update_aggregated_stats(self) -> None:
         """Update aggregated statistics periodically."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         
         # Update every 5 minutes
         if (self._last_aggregation is None or 

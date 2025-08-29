@@ -8,7 +8,7 @@ Tags: postgresql, repository, async, relationships, optimization
 from typing import Any, Dict, List, Optional, Type, Tuple
 from uuid import UUID
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 
 from sqlalchemy import and_, or_, select, update, delete, func, text
 from sqlalchemy.orm import selectinload, joinedload
@@ -54,7 +54,7 @@ class QueryPerformanceMetrics:
         self.query_type = query_type
         self.execution_time = execution_time
         self.rows_affected = rows_affected
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(UTC)
 
 
 class OptimizedPostgreSQLRepository(BaseRepository[ModelType]):

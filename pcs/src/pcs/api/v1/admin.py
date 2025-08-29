@@ -10,7 +10,7 @@ import psutil
 import time
 from typing import List, Optional, Dict, Any, Union
 from uuid import UUID, uuid4
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
 from fastapi.responses import JSONResponse
@@ -225,7 +225,7 @@ async def get_system_stats(
             performance_metrics=performance_metrics,
             resource_usage=resource_usage,
             uptime_seconds=performance_metrics["uptime_seconds"],
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(UTC)
         )
     
     except Exception as e:
@@ -254,7 +254,7 @@ async def get_detailed_health(
     try:
         health_results = {
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "checks": {}
         }
         
@@ -312,7 +312,7 @@ async def get_detailed_health(
     except Exception as e:
         return {
             "status": "error",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "error": str(e)
         }
 
@@ -344,7 +344,7 @@ async def perform_database_maintenance(
         maintenance_results = {
             "operation": operation,
             "dry_run": dry_run,
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
             "tables_processed": [],
             "errors": [],
             "warnings": []
@@ -426,7 +426,7 @@ async def perform_database_maintenance(
                         "error": str(e)
                     })
         
-        maintenance_results["completed_at"] = datetime.utcnow().isoformat()
+        maintenance_results["completed_at"] = datetime.now(UTC).isoformat()
         
         return maintenance_results
     
@@ -513,7 +513,7 @@ async def get_query_performance(
             "slow_queries": slow_queries,
             "active_queries": active_queries,
             "database_stats": db_stats,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
     
     except Exception as e:
@@ -550,7 +550,7 @@ async def manage_cache(
             "operation": operation,
             "pattern": pattern,
             "keys_processed": 0,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "status": "completed"
         }
         
@@ -619,8 +619,8 @@ async def list_users(
                 "email": "admin@example.com",
                 "is_active": True,
                 "is_admin": True,
-                "created_at": datetime.utcnow().isoformat(),
-                "last_login": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
+                "last_login": datetime.now(UTC).isoformat(),
                 "conversation_count": 5,
                 "total_tokens_used": 10000
             },
@@ -630,8 +630,8 @@ async def list_users(
                 "email": "user1@example.com",
                 "is_active": True,
                 "is_admin": False,
-                "created_at": datetime.utcnow().isoformat(),
-                "last_login": (datetime.utcnow() - timedelta(days=1)).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
+                "last_login": (datetime.now(UTC) - timedelta(days=1)).isoformat(),
                 "conversation_count": 3,
                 "total_tokens_used": 5000
             }
@@ -694,7 +694,7 @@ async def manage_users(
             "action": action,
             "processed_users": [],
             "errors": [],
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
         
         for user_id in user_ids:
@@ -838,7 +838,7 @@ async def get_system_logs(
         
         sample_logs = [
             {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "level": "INFO",
                 "module": "api.v1.prompts",
                 "message": "Prompt template created successfully",
@@ -846,14 +846,14 @@ async def get_system_logs(
                 "request_id": "req_456"
             },
             {
-                "timestamp": (datetime.utcnow() - timedelta(minutes=1)).isoformat(),
+                "timestamp": (datetime.now(UTC) - timedelta(minutes=1)).isoformat(),
                 "level": "WARNING",
                 "module": "core.database",
                 "message": "Database connection pool at 80% capacity",
                 "details": {"pool_size": 20, "active_connections": 16}
             },
             {
-                "timestamp": (datetime.utcnow() - timedelta(minutes=2)).isoformat(),
+                "timestamp": (datetime.now(UTC) - timedelta(minutes=2)).isoformat(),
                 "level": "ERROR",
                 "module": "services.context_service",
                 "message": "Failed to merge contexts",
@@ -882,7 +882,7 @@ async def get_system_logs(
             "total_lines": len(sample_logs),
             "level_filter": level,
             "search_filter": search,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
     
     except Exception as e:

@@ -10,7 +10,7 @@ import psutil
 import time
 import json
 from typing import Dict, Any, List, Optional, Callable, Set
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from dataclasses import dataclass, field
 from enum import Enum
 import logging
@@ -88,7 +88,7 @@ class Alert:
     @property
     def duration(self) -> int:
         """Get alert duration in seconds."""
-        end_time = self.resolved_at or datetime.utcnow()
+        end_time = self.resolved_at or datetime.now(UTC)
         return int((end_time - self.started_at).total_seconds())
 
 
@@ -390,7 +390,7 @@ class AlertManager:
         alert = Alert(
             rule=rule,
             value=value,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(UTC),
             labels=rule.labels.copy(),
             annotations=rule.annotations.copy()
         )
@@ -412,7 +412,7 @@ class AlertManager:
         if rule_name in self.active_alerts:
             alert = self.active_alerts[rule_name]
             alert.status = AlertStatus.RESOLVED
-            alert.resolved_at = datetime.utcnow()
+            alert.resolved_at = datetime.now(UTC)
             
             del self.active_alerts[rule_name]
             
@@ -424,7 +424,7 @@ class AlertManager:
     
     def get_alert_history(self, hours: int = 24) -> List[Alert]:
         """Get alert history for specified time window."""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
         return [alert for alert in self.alert_history if alert.started_at >= cutoff]
 
 
@@ -537,7 +537,7 @@ class HealthChecker:
     
     async def _run_checks(self) -> None:
         """Run all enabled health checks."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         
         for check in self.checks.values():
             if not check.enabled:
@@ -578,7 +578,7 @@ class HealthChecker:
                     healthy=bool(result),
                     message="OK" if result else "Check failed",
                     duration=duration,
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                     labels=check.labels.copy()
                 )
             
@@ -588,7 +588,7 @@ class HealthChecker:
                 healthy=False,
                 message=f"Check timed out after {check.timeout}s",
                 duration=check.timeout,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 labels=check.labels.copy()
             )
         except Exception as e:
@@ -597,7 +597,7 @@ class HealthChecker:
                 healthy=False,
                 message=f"Check failed: {str(e)}",
                 duration=time.time() - start_time,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 labels=check.labels.copy()
             )
         
@@ -618,7 +618,7 @@ class HealthChecker:
                 healthy=True,
                 message="Database connection OK",
                 duration=0.1,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 labels=check.labels.copy(),
                 metadata={"connection_pool_size": 10, "active_connections": 5}
             )
@@ -628,7 +628,7 @@ class HealthChecker:
                 healthy=False,
                 message=f"Database connection failed: {e}",
                 duration=0.0,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 labels=check.labels.copy()
             )
     
@@ -644,7 +644,7 @@ class HealthChecker:
                 healthy=True,
                 message="Redis connection OK",
                 duration=0.05,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 labels=check.labels.copy(),
                 metadata={"connected_clients": 2, "used_memory": "1024KB"}
             )
@@ -654,7 +654,7 @@ class HealthChecker:
                 healthy=False,
                 message=f"Redis connection failed: {e}",
                 duration=0.0,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 labels=check.labels.copy()
             )
     
@@ -672,7 +672,7 @@ class HealthChecker:
                 healthy=healthy,
                 message=message,
                 duration=0.01,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 labels=check.labels.copy(),
                 metadata={
                     "total_bytes": disk_usage.total,
@@ -687,7 +687,7 @@ class HealthChecker:
                 healthy=False,
                 message=f"Disk check failed: {e}",
                 duration=0.0,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 labels=check.labels.copy()
             )
     
@@ -705,7 +705,7 @@ class HealthChecker:
                 healthy=healthy,
                 message=message,
                 duration=0.01,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 labels=check.labels.copy(),
                 metadata={
                     "total_bytes": memory.total,
@@ -720,7 +720,7 @@ class HealthChecker:
                 healthy=False,
                 message=f"Memory check failed: {e}",
                 duration=0.0,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 labels=check.labels.copy()
             )
     

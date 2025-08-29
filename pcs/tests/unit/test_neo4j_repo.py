@@ -9,7 +9,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, Mock, patch, MagicMock
 from uuid import uuid4, UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import List, Dict, Any
 from contextlib import asynccontextmanager
 
@@ -35,6 +35,37 @@ class MockAsyncContextManager:
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         return None
+
+
+class MockRelationship:
+    """Mock Neo4j relationship that behaves like both dict and object."""
+    
+    def __init__(self, **kwargs):
+        self._data = kwargs
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+    
+    def keys(self):
+        return self._data.keys()
+    
+    def values(self):
+        return self._data.values()
+    
+    def items(self):
+        return self._data.items()
+    
+    def get(self, key, default=None):
+        return self._data.get(key, default)
+    
+    def __getitem__(self, key):
+        return self._data[key]
+    
+    def __setitem__(self, key, value):
+        self._data[key] = value
+        setattr(self, key, value)
+    
+    def __contains__(self, key):
+        return key in self._data
 
 
 @pytest.fixture
@@ -286,8 +317,7 @@ class TestNeo4jRepositoryEnhanced:
             }
         ]
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_driver.session.return_value = MockAsyncContextManager(mock_session)
         
         # Execute
         time_range = (
@@ -324,8 +354,7 @@ class TestNeo4jRepositoryEnhanced:
             "rel_id": 123
         }]
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_driver.session.return_value = MockAsyncContextManager(mock_session)
         
         # Execute
         result = await repository.create_context_hierarchy(parent_id, child_id)
@@ -357,26 +386,25 @@ class TestNeo4jRepositoryEnhanced:
                 {"id": str(dep_id2), "name": "Dependency 2"}
             ],
             "path_rels": [
-                Mock(
+                MockRelationship(
                     id=1,
                     type="DEPENDS_ON",
                     start_node={"id": str(context_id)},
                     end_node={"id": str(dep_id1)},
-                    **{"created_at": datetime.utcnow().isoformat()}
+                    created_at=datetime.now(UTC).isoformat()
                 ),
-                Mock(
+                MockRelationship(
                     id=2,
                     type="DEPENDS_ON",
                     start_node={"id": str(dep_id1)},
                     end_node={"id": str(dep_id2)},
-                    **{"created_at": datetime.utcnow().isoformat()}
+                    created_at=datetime.now(UTC).isoformat()
                 )
             ]
         }]
         
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_driver.session.return_value = MockAsyncContextManager(mock_session)
         
         # Execute
         result = await repository.find_context_dependencies(context_id, max_depth=3)
@@ -407,8 +435,7 @@ class TestNeo4jRepositoryEnhanced:
             "rel_id": 456
         }]
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_driver.session.return_value = MockAsyncContextManager(mock_session)
         
         # Execute
         result = await repository.create_prompt_template_dependency(template_id, dependent_id)
@@ -442,8 +469,7 @@ class TestNeo4jRepositoryEnhanced:
         ]
         
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_driver.session.return_value = MockAsyncContextManager(mock_session)
         
         # Execute
         result = await repository.get_relationship_statistics()
@@ -466,8 +492,7 @@ class TestNeo4jRepositoryEnhanced:
         mock_result = AsyncMock()
         mock_result.data.return_value = []
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_driver.session.return_value = MockAsyncContextManager(mock_session)
         
         # Execute
         result = await repository.optimize_graph_performance()
@@ -632,8 +657,7 @@ class TestBackwardCompatibility:
             {"r": {"type": "DEPENDS_ON"}, "other": {"id": "other1"}}
         ]
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_driver.session.return_value = MockAsyncContextManager(mock_session)
         
         # Execute
         result = await repository.find_relationships(
@@ -654,8 +678,7 @@ class TestBackwardCompatibility:
         mock_result = AsyncMock()
         mock_result.data.return_value = [{"deleted_count": 1}]
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_driver.session.return_value = MockAsyncContextManager(mock_session)
         
         # Execute
         result = await repository.delete_node(uuid4())
@@ -674,8 +697,7 @@ class TestErrorHandling:
         from neo4j.exceptions import Neo4jError
         mock_session = AsyncMock()
         mock_session.run.side_effect = Neo4jError("Connection failed")
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_driver.session.return_value = MockAsyncContextManager(mock_session)
         
         # Execute and verify
         with pytest.raises(RepositoryError, match="Failed to execute Cypher query"):
@@ -689,8 +711,7 @@ class TestErrorHandling:
         mock_result = AsyncMock()
         mock_result.data.return_value = []  # Empty result should cause error
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_driver.session.return_value = MockAsyncContextManager(mock_session)
         
         # Execute and verify
         with pytest.raises(RepositoryError, match="Failed to create node - no result returned"):
@@ -704,8 +725,7 @@ class TestErrorHandling:
         mock_result = AsyncMock()
         mock_result.data.return_value = []  # Empty result should cause error
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_driver.session.return_value = MockAsyncContextManager(mock_session)
         
         # Execute and verify
         with pytest.raises(RepositoryError, match="Failed to create relationship - no result returned"):
@@ -741,8 +761,7 @@ class TestPerformanceFeatures:
         
         mock_result.data.return_value = large_dataset
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
+        mock_driver.session.return_value = MockAsyncContextManager(mock_session)
         
         # Execute
         user_id = uuid4()

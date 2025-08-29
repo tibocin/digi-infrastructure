@@ -162,6 +162,7 @@ def async_repository():
     mock_client.get_collection.return_value = collection_info
     mock_client.collection_exists.return_value = True
     mock_client.create_collection.return_value = True
+    mock_client.create_collection_async.return_value = True
     mock_client.search.return_value = scored_points
     mock_client.scroll.return_value = ([], None)
     mock_client.retrieve.return_value = []
@@ -247,10 +248,10 @@ class TestEnhancedQdrantRepository:
         )
         
         with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
-            result = await repository.create_collection(
+            result = await repository.create_collection_optimized(
                 collection_name=config.name,
                 vector_size=config.vector_size,
-                distance=config.distance,
+                distance=config.distance.value,
                 hnsw_config=config.hnsw_config,
                 optimizers_config=config.optimizers_config
             )
@@ -657,7 +658,8 @@ class TestQdrantCollectionConfig:
         """Test QdrantCollectionConfig with default values."""
         config = QdrantCollectionConfig(
             name="test_collection",
-            vector_size=384
+            vector_size=384,
+            distance=QdrantDistance.COSINE
         )
         
         assert config.name == "test_collection"
@@ -665,9 +667,6 @@ class TestQdrantCollectionConfig:
         assert config.distance == QdrantDistance.COSINE
         assert config.hnsw_config is None
         assert config.optimizers_config is None
-        assert config.quantization_config is None
-        assert config.replication_factor is None
-        assert config.write_consistency_factor is None
         assert config.on_disk_payload is True
 
     def test_qdrant_collection_config_custom(self):
@@ -678,9 +677,6 @@ class TestQdrantCollectionConfig:
             distance=QdrantDistance.EUCLIDEAN,
             hnsw_config={"m": 32, "ef_construct": 200},
             optimizers_config={"deleted_threshold": 0.1},
-            quantization_config={"type": "product", "compression": 8},
-            replication_factor=2,
-            write_consistency_factor=1,
             on_disk_payload=False
         )
         
@@ -689,9 +685,6 @@ class TestQdrantCollectionConfig:
         assert config.distance == QdrantDistance.EUCLIDEAN
         assert config.hnsw_config == {"m": 32, "ef_construct": 200}
         assert config.optimizers_config == {"deleted_threshold": 0.1}
-        assert config.quantization_config == {"type": "product", "compression": 8}
-        assert config.replication_factor == 2
-        assert config.write_consistency_factor == 1
         assert config.on_disk_payload is False
 
 
@@ -860,10 +853,14 @@ class TestErrorHandling:
         """Test error handling in collection creation."""
         mock_qdrant_client.create_collection.side_effect = Exception("Creation failed")
         
-        config = QdrantCollectionConfig(name="test_collection", vector_size=384)
+        config = QdrantCollectionConfig(name="test_collection", vector_size=384, distance=QdrantDistance.COSINE)
         
         with pytest.raises(RepositoryError, match="Failed to create optimized collection"):
-            await repository.create_collection_optimized(config)
+            await repository.create_collection_optimized(
+                collection_name=config.name,
+                vector_size=config.vector_size,
+                distance=config.distance.value
+            )
 
     @pytest.mark.asyncio
     async def test_bulk_upsert_error(self, repository, mock_qdrant_client, sample_vector_documents):
@@ -997,11 +994,20 @@ class TestAsyncRepository:
         """Test async collection creation."""
         config = QdrantCollectionConfig(
             name="test_collection",
-            vector_size=384
+            vector_size=384,
+            distance=QdrantDistance.COSINE
         )
         
         with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
-            result = await async_repository.create_collection_optimized(config)
+            result = await async_repository.create_collection_optimized(
+                collection_name=config.name,
+                vector_size=config.vector_size,
+                distance=config.distance.value
+            )
         
         assert result is True
+<<<<<<< Current (Your changes)
         async_repository.client.create_collection.assert_called_once()
+=======
+        async_repository.client.create_collection_async.assert_called_once()
+>>>>>>> Incoming (Background Agent changes)

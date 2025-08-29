@@ -184,10 +184,20 @@ class TestContextAPIEndpoints:
     """Test context management API endpoints."""
     
     @pytest.fixture
-    def app(self):
-        """Create FastAPI test app."""
+    def app(self, mock_db_session, mock_current_user):
+        """Create FastAPI test app with dependency overrides."""
+        from pcs.api.dependencies import get_database_session, get_current_user
+        
         app = FastAPI()
         app.include_router(router, prefix="/api/v1")
+        
+        # Override dependencies for testing
+        async def override_get_database_session():
+            yield mock_db_session
+            
+        app.dependency_overrides[get_database_session] = override_get_database_session
+        app.dependency_overrides[get_current_user] = lambda: mock_current_user
+        
         return app
     
     @pytest.fixture
@@ -267,8 +277,10 @@ class TestContextAPIEndpoints:
         context.scope = ContextScope.USER
         context.owner_id = sample_context_data["owner_id"]
         context.project_id = sample_context_data["project_id"]
-        context.context_data = sample_context_data["context_data"]
-        context.context_metadata = sample_context_data["context_metadata"]
+        context.data = sample_context_data["context_data"]
+        context.metadata = sample_context_data["context_metadata"]
+        context.context_data = sample_context_data["context_data"]  # Keep for compatibility
+        context.context_metadata = sample_context_data["context_metadata"]  # Keep for compatibility
         context.is_active = True
         context.priority = sample_context_data["priority"]
         context.vector_embedding = None
@@ -360,22 +372,22 @@ class TestContextAPIEndpoints:
     
     # Context Tests
     
-    @patch('pcs.api.v1.contexts.get_database_session')
-    @patch('pcs.api.v1.contexts.get_current_user')
     @patch('pcs.api.v1.contexts.PostgreSQLRepository')
-    def test_list_contexts_success(self, mock_repo_class, mock_get_user, mock_get_db,
-                                  client, mock_db_session, mock_current_user, sample_context_model):
+    def test_list_contexts_success(self, mock_repo_class, client, sample_context_model):
         """Test successful listing of contexts."""
-        # Setup mocks
-        mock_get_db.return_value = mock_db_session
-        mock_get_user.return_value = mock_current_user
-        
+        # Setup repository mock
         mock_repo = Mock()
         mock_repo_class.return_value = mock_repo
         mock_repo.find_by_criteria = AsyncMock(return_value=[sample_context_model])
         
         # Make request
         response = client.get("/api/v1/contexts/")
+        
+        # Debug: Print response details if not 200
+        if response.status_code != 200:
+            print(f"Response status: {response.status_code}")
+            print(f"Response content: {response.content}")
+            print(f"Response text: {response.text}")
         
         # Assertions
         assert response.status_code == status.HTTP_200_OK

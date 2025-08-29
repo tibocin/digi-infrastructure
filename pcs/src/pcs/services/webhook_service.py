@@ -12,7 +12,7 @@ import json
 import logging
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
@@ -344,7 +344,7 @@ class WebhookDeliveryEngine:
                     status_code=response.status_code,
                     response_body=response.text[:1000],  # Limit response body
                     delivery_time=delivery_time,
-                    delivered_at=datetime.utcnow()
+                    delivered_at=datetime.now(UTC)
                 )
             else:
                 # Non-success status code
@@ -449,7 +449,7 @@ class WebhookDeliveryEngine:
         webhook_data = {
             "endpoint": endpoint.model_dump_json(),
             "payload": payload.model_dump_json(),
-            "queued_at": datetime.utcnow().isoformat()
+            "queued_at": datetime.now(UTC).isoformat()
         }
         
         queue_id = str(uuid.uuid4())
@@ -467,7 +467,7 @@ class WebhookDeliveryEngine:
                 "status": WebhookStatus.PENDING.value,
                 "endpoint_url": endpoint.url,
                 "event": payload.event.value,
-                "created_at": datetime.utcnow().isoformat()
+                "created_at": datetime.now(UTC).isoformat()
             }
         )
         
@@ -703,7 +703,7 @@ async def send_task_completion_webhook(task_id: str, result: Any, execution_time
             "task_id": task_id,
             "result": result,
             "execution_time": execution_time,
-            "completed_at": datetime.utcnow().isoformat()
+            "completed_at": datetime.now(UTC).isoformat()
         }
     )
 
@@ -717,7 +717,7 @@ async def send_task_failure_webhook(task_id: str, error: str, execution_time: fl
             "task_id": task_id,
             "error": error,
             "execution_time": execution_time,
-            "failed_at": datetime.utcnow().isoformat()
+            "failed_at": datetime.now(UTC).isoformat()
         }
     )
 

@@ -432,4 +432,33 @@ class AsyncQdrantHTTPClient(QdrantHTTPClient):
         response = await self._make_request_async("GET", "/collections")
         return response.get("result", {}).get("collections", [])
     
+    async def create_collection_async(
+        self,
+        collection_name: str,
+        config: 'QdrantCollectionConfig'
+    ) -> bool:
+        """Async create a new collection."""
+        # Build collection configuration
+        collection_config = {
+            "vectors": {
+                "size": config.vector_size,
+                "distance": config.distance.value
+            },
+            "hnsw_config": config.hnsw_config or {},
+            "optimizers_config": config.optimizers_config or {},
+            "on_disk_payload": config.on_disk_payload
+        }
+        
+        try:
+            response = await self._make_request_async(
+                "PUT", 
+                f"/collections/{collection_name}",
+                data=collection_config
+            )
+            return response.get("result", False)
+        except HTTPStatusError as e:
+            if e.response.status_code == 409:  # Collection already exists
+                self.logger.warning(f"Collection {collection_name} already exists")
+                return True
+            raise QdrantHTTPError(f"Failed to create collection: {e}", e.response.status_code)
     # Add other async methods as needed...
