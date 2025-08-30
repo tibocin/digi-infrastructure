@@ -863,12 +863,12 @@ class TestQdrantRepositoryAlias:
     """Test that QdrantRepository is an alias for EnhancedQdrantRepository."""
 
     def test_alias_compatibility(self, mock_qdrant_client):
-        """Test that QdrantRepository is the same as EnhancedQdrantRepository."""
-        assert QdrantRepository == EnhancedQdrantRepository
+        """Test that QdrantRepository is the same as EnhancedQdrantHTTPRepository."""
+        assert QdrantRepository == EnhancedQdrantHTTPRepository
         
         # Test instantiation
         repo = QdrantRepository(client=mock_qdrant_client)
-        assert isinstance(repo, EnhancedQdrantRepository)
+        assert isinstance(repo, EnhancedQdrantHTTPRepository)
         assert repo.client == mock_qdrant_client
 
 
