@@ -693,9 +693,6 @@ class TestQdrantCollectionConfig:
         assert config.distance == QdrantDistance.COSINE
         assert config.hnsw_config is None
         assert config.optimizers_config is None
-        assert config.quantization_config is None
-        assert config.replication_factor is None
-        assert config.write_consistency_factor is None
         assert config.on_disk_payload is True
 
     def test_qdrant_collection_config_custom(self):
@@ -706,9 +703,6 @@ class TestQdrantCollectionConfig:
             distance=QdrantDistance.EUCLIDEAN,
             hnsw_config={"m": 32, "ef_construct": 200},
             optimizers_config={"deleted_threshold": 0.1},
-            quantization_config={"type": "product", "compression": 8},
-            replication_factor=2,
-            write_consistency_factor=1,
             on_disk_payload=False
         )
         
@@ -717,9 +711,6 @@ class TestQdrantCollectionConfig:
         assert config.distance == QdrantDistance.EUCLIDEAN
         assert config.hnsw_config == {"m": 32, "ef_construct": 200}
         assert config.optimizers_config == {"deleted_threshold": 0.1}
-        assert config.quantization_config == {"type": "product", "compression": 8}
-        assert config.replication_factor == 2
-        assert config.write_consistency_factor == 1
         assert config.on_disk_payload is False
 
 
