@@ -281,6 +281,32 @@ class TestEnhancedQdrantRepository:
     @pytest.mark.asyncio
     async def test_semantic_search_advanced(self, repository, mock_qdrant_client):
         """Test advanced semantic search with multi-tenancy and reranking."""
+        # Configure mock to return search results
+        mock_qdrant_client.search.return_value = [
+            Mock(
+                id="doc1",
+                score=0.95,
+                payload={
+                    "content": "Document 1",
+                    "tenant_id": "tenant1",
+                    "created_at": datetime.now(UTC).isoformat(),
+                    "type": "text"
+                },
+                vector=[0.1, 0.2, 0.3]
+            ),
+            Mock(
+                id="doc2",
+                score=0.85,
+                payload={
+                    "content": "Document 2",
+                    "tenant_id": "tenant1",
+                    "created_at": datetime.now(UTC).isoformat(),
+                    "type": "text"
+                },
+                vector=[0.4, 0.5, 0.6]
+            )
+        ]
+        
         request = VectorSearchRequest(
             query_embedding=[0.1, 0.2, 0.3],
             collection_name="test_collection",
@@ -301,7 +327,7 @@ class TestEnhancedQdrantRepository:
         # Verify tenant filtering was applied
         mock_qdrant_client.search.assert_called_once()
         call_kwargs = mock_qdrant_client.search.call_args.kwargs
-        assert "filter" in call_kwargs
+        assert "query_filter" in call_kwargs
 
     @pytest.mark.asyncio
     async def test_find_similar_documents_with_tenant(self, repository, mock_qdrant_client):
@@ -937,7 +963,7 @@ class TestMultiTenancy:
         # Verify tenant filter was applied
         mock_qdrant_client.search.assert_called_once()
         call_kwargs = mock_qdrant_client.search.call_args.kwargs
-        assert "filter" in call_kwargs
+        assert "query_filter" in call_kwargs
 
     @pytest.mark.asyncio
     async def test_tenant_isolation_in_export(self, repository, mock_qdrant_client):
