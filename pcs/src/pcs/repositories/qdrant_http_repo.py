@@ -795,14 +795,22 @@ class EnhancedQdrantHTTPRepository:
                 query_filter = self._build_query_filter(request)
                 
                 # Perform search
-                search_results = self.client.search(
-                    collection_name=request.collection_name,
-                    query_vector=request.query_embedding,
-                    limit=request.n_results,
-                    query_filter=query_filter,
-                    with_payload=True,
-                    with_vectors=request.include_embeddings
-                )
+                if self._is_async:
+                    search_results = await self.client.search_points(
+                        collection_name=request.collection_name,
+                        query_vector=request.query_embedding,
+                        limit=request.n_results,
+                        score_threshold=request.similarity_threshold,
+                        filter_conditions=query_filter
+                    )
+                else:
+                    search_results = self.client.search_points(
+                        collection_name=request.collection_name,
+                        query_vector=request.query_embedding,
+                        limit=request.n_results,
+                        score_threshold=request.similarity_threshold,
+                        filter_conditions=query_filter
+                    )
                 
                 # Convert to SimilarityResult objects
                 results = []
