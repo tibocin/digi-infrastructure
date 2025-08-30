@@ -248,7 +248,7 @@ class TestEnhancedQdrantRepository:
         )
         
         with patch('pcs.repositories.qdrant_http_repo.PerformanceMonitor'):
-            result = await repository.create_collection(
+            result = await repository.create_collection_optimized(
                 collection_name=config.name,
                 vector_size=config.vector_size,
                 distance=config.distance,
