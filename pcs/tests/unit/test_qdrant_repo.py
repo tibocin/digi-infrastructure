@@ -854,9 +854,9 @@ class TestBackwardCompatibility:
     @pytest.mark.asyncio
     async def test_legacy_delete_collection(self, repository, mock_qdrant_client):
         """Test legacy delete_collection method."""
-        result = await repository.delete_collection("test_collection")
+        result = repository.delete_collection("test_collection")
         assert result is True
-        mock_qdrant_client.delete_collection.assert_called_once_with(collection_name="test_collection")
+        mock_qdrant_client.delete_collection.assert_called_once_with("test_collection")
 
 
 class TestQdrantRepositoryAlias:
