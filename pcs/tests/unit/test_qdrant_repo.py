@@ -748,7 +748,7 @@ class TestBackwardCompatibility:
         """Test legacy get_collection method."""
         result = await repository.get_collection("test_collection")
         assert result is True
-        mock_qdrant_client.collection_exists.assert_called_once_with(collection_name="test_collection")
+        mock_qdrant_client.collection_exists.assert_called_once_with("test_collection")
 
     @pytest.mark.asyncio
     async def test_legacy_get_collection_not_found(self, repository, mock_qdrant_client):
