@@ -880,10 +880,19 @@ class TestErrorHandling:
         """Test error handling in collection creation."""
         mock_qdrant_client.create_collection.side_effect = Exception("Creation failed")
         
-        config = QdrantCollectionConfig(name="test_collection", vector_size=384)
+        config = QdrantCollectionConfig(
+            name="test_collection", 
+            vector_size=384, 
+            distance=QdrantDistance.COSINE
+        )
         
-        with pytest.raises(RepositoryError, match="Failed to create optimized collection"):
-            await repository.create_collection_optimized(config)
+        result = await repository.create_collection_optimized(
+            collection_name=config.name,
+            vector_size=config.vector_size,
+            distance=config.distance
+        )
+        
+        assert result is False  # Method returns False on error
 
     @pytest.mark.asyncio
     async def test_bulk_upsert_error(self, repository, mock_qdrant_client, sample_vector_documents):
