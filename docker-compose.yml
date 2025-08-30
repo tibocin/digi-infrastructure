@@ -58,7 +58,9 @@ services:
 
   # Qdrant Vector Database (REPLACES ChromaDB)
   qdrant:
-    image: qdrant/qdrant:v1.7.4
+    build:
+      context: ./docker/qdrant
+      dockerfile: Dockerfile
     container_name: digi-qdrant
     restart: unless-stopped
     environment:
@@ -79,9 +81,13 @@ services:
       QDRANT__SERVICE__MAX_WORKERS: 0 # Auto-detect CPU cores
       QDRANT__SERVICE__ENABLE_CORS: true
 
-      # Security (production)
-      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:-}
+      # Security (production) - API key required for all endpoints
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:-digi_health_check_key_123}
       QDRANT__SERVICE__READ_ONLY: false
+
+      # Health check configuration - dedicated endpoint without auth
+      QDRANT__SERVICE__HEALTH_CHECK_PATH: /health
+      QDRANT__SERVICE__HEALTH_CHECK_AUTH: false
 
       # Clustering (for future scaling)
       QDRANT__CLUSTER__ENABLED: false
@@ -99,7 +105,7 @@ services:
       - "6333:6333" # HTTP API
       - "6334:6334" # gRPC API
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:6333/health" ]
+      test: [ "CMD", "nc", "-z", "localhost", "6333" ]
       interval: 30s
       timeout: 10s
       retries: 3
