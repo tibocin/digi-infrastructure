@@ -1,8 +1,8 @@
 """
 Filepath: pcs/src/pcs/services/prompt_service.py
-Purpose: Core prompt generation service integrating template engine, rule engine, and context manager
-Related Components: Template engine, rule engine, context manager, repositories, caching
-Tags: prompt-generation, template-processing, context-injection, rule-evaluation, caching
+Purpose: Core prompt generation service integrating template engine, rule engine, context manager, and vector indexing
+Related Components: Template engine, rule engine, context manager, repositories, caching, vector indexing
+Tags: prompt-generation, template-processing, context-injection, rule-evaluation, caching, vector-search
 """
 
 import time
@@ -15,6 +15,7 @@ from uuid import uuid4
 
 from ..core.exceptions import PCSError
 from ..repositories.redis_repo import RedisRepository
+from ..repositories.qdrant_repo import EnhancedQdrantRepository, VectorSearchRequest, SimilarityResult
 from .template_service import TemplateEngine, TemplateError
 from .rule_engine import RuleEngine, RuleEvaluationResult, RuleError
 from .context_service import (
@@ -360,7 +361,8 @@ class PromptGenerator:
         template_engine: TemplateEngine,
         rule_engine: RuleEngine,
         context_manager: ContextManager,
-        redis_repo: RedisRepository
+        redis_repo: RedisRepository,
+        qdrant_repo: Optional[EnhancedQdrantRepository] = None
     ):
         """
         Initialize prompt generator.
@@ -370,10 +372,12 @@ class PromptGenerator:
             rule_engine: Rule engine for conditional logic
             context_manager: Context manager for context operations
             redis_repo: Redis repository for caching
+            qdrant_repo: Qdrant repository for vector indexing (optional)
         """
         self.template_engine = template_engine
         self.rule_engine = rule_engine
         self.context_manager = context_manager
+        self.qdrant_repo = qdrant_repo
         
         # Initialize supporting components
         self.cache = PromptCache(redis_repo)
@@ -727,3 +731,162 @@ class PromptGenerator:
             health['status'] = 'unhealthy'
         
         return health
+    
+    # ========================================================================
+    # Vector Indexing Methods
+    # ========================================================================
+    
+    async def index_prompt_template(
+        self,
+        prompt_template: "PromptTemplate",
+        app_id: str,
+        collection_name: Optional[str] = None
+    ) -> bool:
+        """
+        Index a prompt template for vector search.
+        
+        Args:
+            prompt_template: The prompt template to index
+            app_id: Application identifier for tenant isolation
+            collection_name: Optional custom collection name
+            
+        Returns:
+            True if indexing was successful
+        """
+        if not self.qdrant_repo:
+            raise PromptError("Vector indexing not available - Qdrant repository not configured")
+        
+        try:
+            # Generate collection name if not provided
+            if not collection_name:
+                collection_name = f"{app_id}_prompts"
+            
+            # Create text representation for embedding
+            text_for_embedding = self._prepare_text_for_embedding(prompt_template)
+            
+            # Generate embedding (this would need an embedding service)
+            # For now, we'll use a placeholder - you'll need to implement this
+            embedding = await self._generate_embedding(text_for_embedding)
+            
+            # Prepare payload for vector storage
+            payload = {
+                "prompt_id": str(prompt_template.id),
+                "name": prompt_template.name,
+                "description": prompt_template.description,
+                "category": prompt_template.category,
+                "tags": prompt_template.tags or [],
+                "status": prompt_template.status.value,
+                "is_system": prompt_template.is_system,
+                "app_id": app_id,
+                "created_at": prompt_template.created_at.isoformat() if prompt_template.created_at else None,
+                "updated_at": prompt_template.updated_at.isoformat() if prompt_template.updated_at else None
+            }
+            
+            # Store in Qdrant
+            await self.qdrant_repo.upsert_points(
+                collection_name=collection_name,
+                operation={
+                    "points": [{
+                        "id": str(prompt_template.id),
+                        "vector": embedding,
+                        "payload": payload
+                    }]
+                }
+            )
+            
+            return True
+            
+        except Exception as e:
+            raise PromptError(f"Failed to index prompt template: {str(e)}") from e
+    
+    async def search_similar_prompts(
+        self,
+        query_text: str,
+        app_id: str,
+        collection_name: Optional[str] = None,
+        limit: int = 5,
+        similarity_threshold: float = 0.7
+    ) -> List[SimilarityResult]:
+        """
+        Search for similar prompts using vector similarity.
+        
+        Args:
+            query_text: Text query to find similar prompts
+            app_id: Application identifier for tenant isolation
+            collection_name: Optional custom collection name
+            limit: Maximum number of results
+            similarity_threshold: Minimum similarity score
+            
+        Returns:
+            List of similar prompts with similarity scores
+        """
+        if not self.qdrant_repo:
+            raise PromptError("Vector search not available - Qdrant repository not configured")
+        
+        try:
+            # Generate collection name if not provided
+            if not collection_name:
+                collection_name = f"{app_id}_prompts"
+            
+            # Generate embedding for query
+            query_embedding = await self._generate_embedding(query_text)
+            
+            # Search for similar prompts
+            search_request = VectorSearchRequest(
+                query_embedding=query_embedding,
+                collection_name=collection_name,
+                n_results=limit,
+                similarity_threshold=similarity_threshold,
+                metadata_filter={"app_id": app_id}
+            )
+            
+            results = await self.qdrant_repo.semantic_search_advanced(search_request)
+            return results
+            
+        except Exception as e:
+            raise PromptError(f"Failed to search similar prompts: {str(e)}") from e
+    
+    def _prepare_text_for_embedding(self, prompt_template: "PromptTemplate") -> str:
+        """Prepare text representation for embedding generation."""
+        text_parts = []
+        
+        # Add template name
+        if prompt_template.name:
+            text_parts.append(prompt_template.name)
+        
+        # Add description
+        if prompt_template.description:
+            text_parts.append(prompt_template.description)
+        
+        # Add category
+        if prompt_template.category:
+            text_parts.append(prompt_template.category)
+        
+        # Add tags
+        if prompt_template.tags:
+            text_parts.extend(prompt_template.tags)
+        
+        # Add template content from latest version
+        if prompt_template.versions:
+            latest_version = prompt_template.versions[0]  # Assuming ordered by version desc
+            if latest_version.content:
+                # Truncate content to avoid overly long embeddings
+                content = latest_version.content[:500]  # First 500 chars
+                text_parts.append(content)
+        
+        return " ".join(text_parts)
+    
+    async def _generate_embedding(self, text: str) -> List[float]:
+        """
+        Generate embedding for text.
+        
+        This is a placeholder - you'll need to implement actual embedding generation.
+        For now, returns a dummy vector.
+        """
+        # TODO: Implement actual embedding generation
+        # This could use OpenAI, local models, or other embedding services
+        
+        # Placeholder: return a dummy 384-dimensional vector
+        import random
+        random.seed(hash(text) % 2**32)  # Deterministic for same text
+        return [random.uniform(-1, 1) for _ in range(384)]
