@@ -107,6 +107,7 @@ def mock_qdrant_client():
     
     # Setup mock methods
     client.get_collection.return_value = collection_info
+    client.get_collection_stats.return_value = collection_info
     client.collection_exists.return_value = True
     client.create_collection.return_value = True
     client.search.return_value = scored_points
@@ -848,7 +849,7 @@ class TestBackwardCompatibility:
         """Test legacy count_documents method."""
         count = await repository.count_documents("test_collection")
         assert count == 100  # Based on mock data
-        mock_qdrant_client.get_collection.assert_called()
+        mock_qdrant_client.get_collection_stats.assert_called()
 
     @pytest.mark.asyncio
     async def test_legacy_delete_collection(self, repository, mock_qdrant_client):
