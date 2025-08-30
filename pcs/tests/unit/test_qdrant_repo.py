@@ -507,8 +507,8 @@ class TestEnhancedQdrantRepository:
         )
         
         results = [
-            SimilarityResult(document=doc1, similarity_score=0.7, distance=0.3, rank=1),
-            SimilarityResult(document=doc2, similarity_score=0.8, distance=0.2, rank=2)
+            SimilarityResult(document=doc1, similarity_score=0.7, metadata={"priority": "high"}),
+            SimilarityResult(document=doc2, similarity_score=0.8, metadata={"recent": True})
         ]
         
         request = VectorSearchRequest()
