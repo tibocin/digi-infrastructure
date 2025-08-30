@@ -588,7 +588,7 @@ class TestVectorDocument:
         assert doc_dict["tenant_id"] == "tenant1"
 
     def test_to_qdrant_point(self):
-        """Test conversion to Qdrant PointStruct."""
+        """Test conversion to Qdrant QdrantPoint."""
         doc = VectorDocument(
             id="test_id",
             content="Test content",
@@ -600,13 +600,13 @@ class TestVectorDocument:
         )
         
         point = doc.to_qdrant_point()
-        assert isinstance(point, PointStruct)
+        assert isinstance(point, QdrantPoint)
         assert point.id == "test_id"
         assert point.vector == [0.1, 0.2, 0.3]
         assert point.payload["content"] == "Test content"
-        assert point.payload["tenant_id"] == "tenant1"
         assert point.payload["type"] == "test"
         assert point.payload["category"] == "sample"
+        assert point.payload["tenant_id"] == "tenant1"
 
 
 class TestVectorSearchRequest:
