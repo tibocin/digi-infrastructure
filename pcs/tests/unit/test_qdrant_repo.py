@@ -114,6 +114,7 @@ def mock_qdrant_client():
     client.scroll.return_value = (scroll_points, None)
     client.retrieve.return_value = scroll_points
     client.upsert.return_value = Mock()
+    client.upsert_points.return_value = Mock()
     client.delete.return_value = Mock()
     client.delete_collection.return_value = True
     client.update_collection.return_value = Mock()
@@ -165,9 +166,11 @@ def async_repository():
     mock_client.create_collection.return_value = True
     mock_client.create_collection_async.return_value = True
     mock_client.search_points.return_value = scored_points
+    mock_client.search_points_async.return_value = scored_points
     mock_client.scroll.return_value = ([], None)
     mock_client.retrieve.return_value = []
     mock_client.upsert.return_value = Mock()
+    mock_client.upsert_points.return_value = Mock()
     mock_client.delete.return_value = Mock()
     mock_client.delete_collection.return_value = True
     
@@ -277,7 +280,7 @@ class TestEnhancedQdrantRepository:
         assert result["total_processed"] == 3
         assert result["batch_count"] == 2  # 2 docs in first batch, 1 in second
         assert result["execution_time_seconds"] > 0
-        assert mock_qdrant_client.upsert.call_count == 2
+        assert mock_qdrant_client.upsert_points.call_count == 2
 
     @pytest.mark.asyncio
     async def test_semantic_search_advanced(self, repository, mock_qdrant_client):
@@ -772,7 +775,7 @@ class TestBackwardCompatibility:
         )
         
         assert result is True
-        mock_qdrant_client.upsert.assert_called()
+        mock_qdrant_client.upsert_points.assert_called()
 
     @pytest.mark.asyncio
     async def test_legacy_query_documents(self, repository, mock_qdrant_client):
@@ -847,6 +850,9 @@ class TestBackwardCompatibility:
     @pytest.mark.asyncio
     async def test_legacy_count_documents(self, repository, mock_qdrant_client):
         """Test legacy count_documents method."""
+        # Mock the get_collection_stats to return proper dict structure
+        mock_qdrant_client.get_collection_stats.return_value = {"points_count": 100}
+        
         count = await repository.count_documents("test_collection")
         assert count == 100  # Based on mock data
         mock_qdrant_client.get_collection_stats.assert_called()
@@ -897,7 +903,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_bulk_upsert_error(self, repository, mock_qdrant_client, sample_vector_documents):
         """Test error handling in bulk upsert."""
-        mock_qdrant_client.upsert.side_effect = Exception("Upsert failed")
+        mock_qdrant_client.upsert_points.side_effect = Exception("Upsert failed")
         
         operation = BulkVectorOperation(
             operation_type="insert",
@@ -991,9 +997,18 @@ class TestMultiTenancy:
         
         query_filter = repository._build_query_filter(request)
         
-        # Current implementation returns None as placeholder for simplified filter
-        # TODO: Implement proper Qdrant filter building
-        assert query_filter is None
+        # Should return proper filter structure for tenant and metadata filters
+        assert query_filter is not None
+        assert "must" in query_filter
+        assert len(query_filter["must"]) >= 1  # At least tenant filter
+        
+        # Check tenant filter is present
+        tenant_filter_found = any(
+            filter_item.get("key") == "tenant_id" and 
+            filter_item.get("match", {}).get("value") == "tenant1"
+            for filter_item in query_filter["must"]
+        )
+        assert tenant_filter_found
 
     def test_build_query_filter_empty(self, repository):
         """Test building query filter with no filters."""
@@ -1020,7 +1035,7 @@ class TestAsyncRepository:
             results = await async_repository.semantic_search_advanced(request)
         
         assert isinstance(results, list)
-        async_repository.client.search_points.assert_called_once()
+        async_repository.client.search_points_async.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_async_collection_creation(self, async_repository):
