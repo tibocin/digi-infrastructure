@@ -10,8 +10,8 @@ import asyncio
 from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime, UTC
 
-from pcs.repositories.qdrant_repo import (
-    EnhancedQdrantRepository,
+from pcs.repositories.qdrant_repo import EnhancedQdrantRepository
+from pcs.repositories.qdrant_types import (
     VectorDocument,
     SimilarityResult,
     SimilarityAlgorithm,

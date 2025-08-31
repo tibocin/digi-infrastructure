@@ -11,9 +11,8 @@ from unittest.mock import Mock, patch, MagicMock, AsyncMock
 from datetime import datetime, UTC
 from typing import List, Dict, Any
 
-from pcs.repositories.qdrant_repo import (
-    EnhancedQdrantRepository,
-    QdrantHTTPClient,
+from pcs.repositories.qdrant_repo import EnhancedQdrantRepository
+from pcs.repositories.qdrant_types import (
     QdrantDistance,
     QdrantCollectionConfig,
     QdrantPoint,
@@ -25,6 +24,7 @@ from pcs.repositories.qdrant_repo import (
     VectorCollectionStats,
     BulkVectorOperation
 )
+from pcs.repositories.qdrant_http_client import QdrantHTTPClient
 
 
 @pytest.fixture

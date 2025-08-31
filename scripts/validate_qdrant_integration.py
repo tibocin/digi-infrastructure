@@ -16,8 +16,8 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 import uuid
 
-from pcs.repositories.qdrant_repo import (
-    EnhancedQdrantRepository,
+from pcs.repositories.qdrant_repo import EnhancedQdrantRepository
+from pcs.repositories.qdrant_types import (
     VectorSearchRequest,
     VectorDocument,
     BulkVectorOperation,

@@ -18,8 +18,8 @@ from pcs.utils.qdrant_collections import (
     get_lernmi_collection,
     get_beep_boop_collection
 )
-from pcs.repositories.qdrant_repo import (
-    EnhancedQdrantRepository,
+from pcs.repositories.qdrant_repo import EnhancedQdrantRepository
+from pcs.repositories.qdrant_types import (
     VectorDocument,
     VectorSearchRequest,
     SimilarityAlgorithm

@@ -11,9 +11,8 @@ from datetime import datetime, UTC
 from unittest.mock import Mock, patch
 from typing import List, Dict, Any
 
-from pcs.repositories.qdrant_repo import (
-    EnhancedQdrantRepository,
-    QdrantHTTPClient,
+from pcs.repositories.qdrant_repo import EnhancedQdrantRepository
+from pcs.repositories.qdrant_types import (
     QdrantDistance,
     QdrantCollectionConfig,
     VectorDocument,
@@ -21,6 +20,7 @@ from pcs.repositories.qdrant_repo import (
     SimilarityAlgorithm,
     VectorSearchRequest
 )
+from pcs.repositories.qdrant_http_client import QdrantHTTPClient
 
 
 class TestQdrantSimpleIntegration:

@@ -25,8 +25,8 @@ from qdrant_client.models import (
 )
 
 from pcs.repositories.chroma_repo import EnhancedChromaRepository
-from pcs.repositories.qdrant_repo import (
-    EnhancedQdrantRepository, 
+from pcs.repositories.qdrant_repo import EnhancedQdrantRepository
+from pcs.repositories.qdrant_types import (
     QdrantCollectionConfig, 
     QdrantDistance,
     VectorDocument

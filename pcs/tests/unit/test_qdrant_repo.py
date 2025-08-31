@@ -14,7 +14,7 @@ from typing import List, Dict, Any
 import numpy as np
 
 # Use our custom types instead of external qdrant_client
-from pcs.repositories.qdrant_repo import (
+from pcs.repositories.qdrant_types import (
     QdrantDistance, QdrantCollectionConfig, QdrantPoint, QdrantSearchResult
 )
 

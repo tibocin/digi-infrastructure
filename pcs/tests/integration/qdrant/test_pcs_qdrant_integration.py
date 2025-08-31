@@ -67,7 +67,7 @@ async def test_qdrant_collection_operations():
         collection_name = "test_pcs_integration"
         
         # Create collection using repository
-        from pcs.repositories.qdrant_repo import QdrantCollectionConfig
+        from pcs.repositories.qdrant_types import QdrantCollectionConfig
         
         config = QdrantCollectionConfig(
             name=collection_name,
@@ -114,7 +114,7 @@ async def test_vector_operations():
         collection_name = "test_vectors"
         
         # Create collection
-        from pcs.repositories.qdrant_repo import QdrantCollectionConfig
+        from pcs.repositories.qdrant_types import QdrantCollectionConfig
         
         config = QdrantCollectionConfig(
             name=collection_name,
@@ -125,7 +125,7 @@ async def test_vector_operations():
         await repo.create_collection_optimized(config)
         
         # Create test vectors
-        from pcs.repositories.qdrant_repo import VectorDocument
+        from pcs.repositories.qdrant_types import VectorDocument
         from datetime import datetime
         
         # Sample vector (1536 dimensions)
