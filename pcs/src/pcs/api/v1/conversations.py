@@ -236,9 +236,9 @@ async def list_conversations(
         filters = {}
         if user_id:
             filters['user_id'] = user_id
-        elif not current_user.get('is_admin'):
+        elif not (current_user.get('is_admin') if current_user else False if current_user else False):
             # Non-admin users can only see their own conversations
-            filters['user_id'] = current_user.get('id')
+            filters['user_id'] = current_user.get('id') if current_user else None if current_user else None
         
         if project_id:
             filters['project_id'] = project_id
@@ -324,7 +324,7 @@ async def create_conversation(
         new_conversation = Conversation(
             title=conversation_data.title,
             description=conversation_data.description,
-            user_id=current_user.get('id'),
+            user_id=current_user.get('id') if current_user else None if current_user else None,
             project_id=conversation_data.project_id,
             session_id=conversation_data.session_id,
             status=ConversationStatus.ACTIVE,
@@ -377,8 +377,8 @@ async def get_conversation(
             )
         
         # Check access permissions
-        user_id = current_user.get('id')
-        if conversation.user_id != user_id and not current_user.get('is_admin'):
+        user_id = current_user.get('id') if current_user else None
+        if conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this conversation"
@@ -431,8 +431,8 @@ async def update_conversation(
             )
         
         # Check access permissions
-        user_id = current_user.get('id')
-        if existing_conversation.user_id != user_id and not current_user.get('is_admin'):
+        user_id = current_user.get('id') if current_user else None
+        if existing_conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this conversation"
@@ -493,8 +493,8 @@ async def delete_conversation(
             )
         
         # Check access permissions
-        user_id = current_user.get('id')
-        if existing_conversation.user_id != user_id and not current_user.get('is_admin'):
+        user_id = current_user.get('id') if current_user else None
+        if existing_conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this conversation"
@@ -559,8 +559,8 @@ async def list_messages(
             )
         
         # Check access permissions
-        user_id = current_user.get('id')
-        if conversation.user_id != user_id and not current_user.get('is_admin'):
+        user_id = current_user.get('id') if current_user else None
+        if conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this conversation"
@@ -642,8 +642,8 @@ async def create_message(
             )
         
         # Check access permissions
-        user_id = current_user.get('id')
-        if conversation.user_id != user_id and not current_user.get('is_admin'):
+        user_id = current_user.get('id') if current_user else None
+        if conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this conversation"
@@ -727,8 +727,8 @@ async def get_message(
             )
         
         # Check access permissions
-        user_id = current_user.get('id')
-        if conversation.user_id != user_id and not current_user.get('is_admin'):
+        user_id = current_user.get('id') if current_user else None
+        if conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this conversation"
@@ -782,8 +782,8 @@ async def get_conversation_stats(
             )
         
         # Check access permissions
-        user_id = current_user.get('id')
-        if conversation.user_id != user_id and not current_user.get('is_admin'):
+        user_id = current_user.get('id') if current_user else None
+        if conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this conversation"
@@ -884,15 +884,15 @@ async def search_conversations(
         repository = PostgreSQLRepository(db, Conversation)
         
         # Start with user's conversations (unless admin)
-        if not current_user.get('is_admin'):
-            user_conversations = await repository.find_by_criteria(user_id=current_user.get('id'))
+        if not current_user.get('is_admin') if current_user else False:
+            user_conversations = await repository.find_by_criteria(user_id=current_user.get('id') if current_user else None)
         else:
             user_conversations = await repository.find_by_criteria()
         
         conversations = user_conversations
         
         # Apply filters
-        if search_request.user_ids and current_user.get('is_admin'):
+        if search_request.user_ids and current_user.get('is_admin') if current_user else False:
             conversations = [c for c in conversations if c.user_id in search_request.user_ids]
         
         if search_request.project_ids:

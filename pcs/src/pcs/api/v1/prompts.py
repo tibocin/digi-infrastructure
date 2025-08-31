@@ -337,7 +337,7 @@ async def create_prompt_template(
             description=template_data.description,
             category=template_data.category,
             tags=template_data.tags,
-            author=template_data.author or current_user.get('username'),
+            author=template_data.author or (current_user.get('username') if current_user else None),
             status=PromptStatus.DRAFT,
             is_system=False,
             version_count=0

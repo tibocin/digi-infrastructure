@@ -10,7 +10,7 @@ from typing import List, Optional, Dict, Any, Set
 from uuid import UUID, uuid4
 from datetime import datetime, timedelta, UTC
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
@@ -331,12 +331,12 @@ async def list_context_types(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to list context types: {str(e)}"
         )
 
 
-@router.post("/types", response_model=ContextTypeResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/types", response_model=ContextTypeResponse, status_code=201)
 async def create_context_type(
     type_data: ContextTypeCreate,
     db: AsyncSession = Depends(get_database_session),
@@ -358,7 +358,7 @@ async def create_context_type(
         existing = await repository.find_by_criteria(name=type_data.name)
         if existing:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
+                status_code=409,
                 detail=f"Context type with name '{type_data.name}' already exists"
             )
         
@@ -382,7 +382,7 @@ async def create_context_type(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to create context type: {str(e)}"
         )
 
@@ -430,7 +430,7 @@ async def list_contexts(
             filters['is_active'] = True
         
         # Apply access control based on scope
-        user_id = current_user.get('id')
+        user_id = current_user.get('id') if current_user else None
         if scope == ContextScope.PRIVATE and owner_id != user_id:
             filters['owner_id'] = user_id  # Can only see own private contexts
         
@@ -484,12 +484,12 @@ async def list_contexts(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to list contexts: {str(e)}"
         )
 
 
-@router.post("/", response_model=ContextResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ContextResponse, status_code=201)
 async def create_context(
     context_data: ContextCreate,
     db: AsyncSession = Depends(get_database_session),
@@ -512,7 +512,7 @@ async def create_context(
         context_type = await type_repo.get_by_id(context_data.context_type_id)
         if not context_type:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Context type with ID {context_data.context_type_id} not found"
             )
         
@@ -522,7 +522,7 @@ async def create_context(
             # For now, we'll just check that context_data is not empty
             if not context_data.context_data:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=400,
                     detail="Context data cannot be empty"
                 )
         
@@ -555,7 +555,7 @@ async def create_context(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to create context: {str(e)}"
         )
 
@@ -582,7 +582,7 @@ async def get_context(
         
         if not context:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Context with ID {context_id} not found"
             )
         
@@ -590,7 +590,7 @@ async def get_context(
         user_id = current_user.get('id')
         if context.scope == ContextScope.PRIVATE and context.owner_id != user_id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="Access denied to private context"
             )
         
@@ -621,7 +621,7 @@ async def get_context(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to get context: {str(e)}"
         )
 
@@ -648,7 +648,7 @@ async def update_context(
         existing_context = await repository.get_by_id(context_id)
         if not existing_context:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Context with ID {context_id} not found"
             )
         
@@ -656,7 +656,7 @@ async def update_context(
         user_id = current_user.get('id')
         if existing_context.scope == ContextScope.PRIVATE and existing_context.owner_id != user_id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="Access denied to private context"
             )
         
@@ -671,12 +671,12 @@ async def update_context(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to update context: {str(e)}"
         )
 
 
-@router.delete("/{context_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{context_id}", status_code=204)
 async def delete_context(
     context_id: UUID,
     db: AsyncSession = Depends(get_database_session),
@@ -697,7 +697,7 @@ async def delete_context(
         existing_context = await repository.get_by_id(context_id)
         if not existing_context:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Context with ID {context_id} not found"
             )
         
@@ -705,7 +705,7 @@ async def delete_context(
         user_id = current_user.get('id')
         if existing_context.scope == ContextScope.PRIVATE and existing_context.owner_id != user_id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="Access denied to private context"
             )
         
@@ -713,7 +713,7 @@ async def delete_context(
         deleted = await repository.delete(context_id)
         if not deleted:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status_code=500,
                 detail="Failed to delete context"
             )
     
@@ -721,7 +721,7 @@ async def delete_context(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to delete context: {str(e)}"
         )
 
@@ -752,7 +752,7 @@ async def merge_contexts(
             context = await repository.get_by_id(context_id)
             if not context:
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
+                    status_code=404,
                     detail=f"Context with ID {context_id} not found"
                 )
             
@@ -760,7 +760,7 @@ async def merge_contexts(
             user_id = current_user.get('id')
             if context.scope == ContextScope.PRIVATE and context.owner_id != user_id:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
+                    status_code=403,
                     detail=f"Access denied to private context {context_id}"
                 )
             
@@ -857,7 +857,7 @@ async def merge_contexts(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to merge contexts: {str(e)}"
         )
 
@@ -969,6 +969,6 @@ async def search_contexts(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to search contexts: {str(e)}"
         )
