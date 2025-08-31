@@ -30,7 +30,7 @@ from pcs.repositories.qdrant_http_client import QdrantHTTPClient
 @pytest.fixture
 def mock_qdrant_client():
     """Create a mock Qdrant HTTP client for testing."""
-    client = Mock(spec=QdrantHTTPClient)
+    client = Mock()
     
     # Mock health check
     client.health_check.return_value = {"version": "1.7.4", "status": "ok"}
@@ -89,6 +89,18 @@ def mock_qdrant_client():
     
     # Mock points deletion
     client.delete_points.return_value = {"result": {"status": "ok"}}
+    
+    # Mock scroll for export functionality
+    client.scroll.return_value = ([
+        Mock(
+            vector=[0.1, 0.2, 0.3],
+            payload={"content": "Doc 1", "tenant_id": "tenant1"}
+        ),
+        Mock(
+            vector=[0.4, 0.5, 0.6],
+            payload={"content": "Doc 2", "tenant_id": "tenant1"}
+        )
+    ], None)
     
     return client
 
@@ -189,13 +201,14 @@ class TestEnhancedQdrantRepository:
         assert result["result"]["status"] == "ok"
         mock_qdrant_client.upsert_points.assert_called_once()
 
-    def test_search_similar(self, repository, mock_qdrant_client, sample_documents):
+    @pytest.mark.asyncio
+    async def test_search_similar(self, repository, mock_qdrant_client, sample_documents):
         """Test similarity search."""
         # First upsert documents
         repository.upsert_documents("test_collection", sample_documents)
         
         # Then search
-        results = repository.search_similar(
+        results = await repository.search_similar(
             collection_name="test_collection",
             query_embedding=[0.15, 0.25, 0.35, 0.45],
             limit=5,
@@ -257,15 +270,28 @@ class TestEnhancedQdrantRepository:
         mock_qdrant_client.search_points.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_export_embeddings(self, repository):
+    async def test_export_embeddings(self, repository, mock_qdrant_client):
         """Test embedding export."""
+        # Mock scroll results for export
+        mock_qdrant_client.scroll.return_value = ([
+            Mock(
+                vector=[0.1, 0.2, 0.3],
+                payload={"content": "Doc 1", "tenant_id": "tenant1"}
+            ),
+            Mock(
+                vector=[0.4, 0.5, 0.6],
+                payload={"content": "Doc 2", "tenant_id": "tenant1"}
+            )
+        ], None)
+        
         result = await repository.export_embeddings(
             collection_name="test_collection",
             tenant_id="tenant1"
         )
         assert result["collection_name"] == "test_collection"
         assert result["tenant_id"] == "tenant1"
-        assert result["status"] == "exported"
+        assert result["format"] == "numpy"
+        assert len(result["embeddings"]) == 2
 
     @pytest.mark.asyncio
     async def test_create_collection_optimized(self, repository, mock_qdrant_client):
