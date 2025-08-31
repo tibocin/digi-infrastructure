@@ -180,8 +180,9 @@ class TestTenantIsolation:
         
         # Should only return tenant1 embeddings
         assert len(result["embeddings"]) == 2
-        assert result["embeddings"][0] == [0.1, 0.2, 0.3]
-        assert result["embeddings"][1] == [0.7, 0.8, 0.9]
+        import numpy as np
+        assert np.array_equal(result["embeddings"][0], [0.1, 0.2, 0.3])
+        assert np.array_equal(result["embeddings"][1], [0.7, 0.8, 0.9])
     
     @pytest.mark.asyncio
     async def test_statistics_with_tenant_isolation(self, repository, mock_qdrant_client):
@@ -263,9 +264,17 @@ class TestTenantSecurity:
         mock_qdrant_client.search_points.assert_called_once()
         call_args = mock_qdrant_client.search_points.call_args
         
-        # Should contain filter with tenant_id
-        assert "filter" in call_args.kwargs
-        filter_conditions = call_args.kwargs["filter"]
+        # Check both positional and keyword arguments for filter
+        filter_conditions = None
+        if "filter" in call_args.kwargs:
+            filter_conditions = call_args.kwargs["filter"]
+        elif len(call_args.args) > 1:  # Check positional arguments
+            # The second argument is a dict with all parameters
+            params_dict = call_args.args[1]
+            if "filter" in params_dict:
+                filter_conditions = params_dict["filter"]
+        
+        assert filter_conditions is not None, "Filter should be applied to search"
         
         # Find tenant filter
         tenant_filter_found = False
@@ -373,9 +382,9 @@ class TestTenantPerformance:
     async def test_tenant_statistics_performance(self, repository, mock_qdrant_client):
         """Test tenant statistics performance."""
         # Mock scroll for tenant counting
-        mock_qdrant_client.scroll.return_value = [
+        mock_qdrant_client.scroll.return_value = ([
             Mock(payload={"tenant_id": "tenant1"}) for _ in range(1000)
-        ]
+        ], None)
         
         import time
         start_time = time.time()
