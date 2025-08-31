@@ -10,7 +10,7 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID, uuid4
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field, field_validator, ConfigDict
@@ -236,9 +236,9 @@ async def list_conversations(
         filters = {}
         if user_id:
             filters['user_id'] = user_id
-        elif not (current_user.get('is_admin') if current_user else False if current_user else False):
+        elif not (current_user.get('is_admin') if current_user else False):
             # Non-admin users can only see their own conversations
-            filters['user_id'] = current_user.get('id') if current_user else None if current_user else None
+            filters['user_id'] = current_user.get('id') if current_user else None
         
         if project_id:
             filters['project_id'] = project_id
@@ -297,12 +297,12 @@ async def list_conversations(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to list conversations: {str(e)}"
         )
 
 
-@router.post("/", response_model=ConversationResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ConversationResponse, status_code=201)
 async def create_conversation(
     conversation_data: ConversationCreate,
     db: AsyncSession = Depends(get_database_session),
@@ -324,7 +324,7 @@ async def create_conversation(
         new_conversation = Conversation(
             title=conversation_data.title,
             description=conversation_data.description,
-            user_id=current_user.get('id') if current_user else None if current_user else None,
+            user_id=current_user.get('id') if current_user else None,
             project_id=conversation_data.project_id,
             session_id=conversation_data.session_id,
             status=ConversationStatus.ACTIVE,
@@ -344,7 +344,7 @@ async def create_conversation(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to create conversation: {str(e)}"
         )
 
@@ -372,15 +372,15 @@ async def get_conversation(
         
         if not conversation:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Conversation with ID {conversation_id} not found"
             )
         
         # Check access permissions
         user_id = current_user.get('id') if current_user else None
-        if conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
+        if conversation.user_id != user_id and not (current_user.get('is_admin') if current_user else False):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="Access denied to this conversation"
             )
         
@@ -398,7 +398,7 @@ async def get_conversation(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to get conversation: {str(e)}"
         )
 
@@ -426,15 +426,15 @@ async def update_conversation(
         existing_conversation = await repository.get_by_id(conversation_id)
         if not existing_conversation:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Conversation with ID {conversation_id} not found"
             )
         
         # Check access permissions
         user_id = current_user.get('id') if current_user else None
-        if existing_conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
+        if existing_conversation.user_id != user_id and not (current_user.get('is_admin') if current_user else False):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="Access denied to this conversation"
             )
         
@@ -460,12 +460,12 @@ async def update_conversation(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to update conversation: {str(e)}"
         )
 
 
-@router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{conversation_id}", status_code=204)
 async def delete_conversation(
     conversation_id: UUID,
     force: bool = Query(False, description="Force delete even if conversation is active"),
@@ -488,22 +488,22 @@ async def delete_conversation(
         existing_conversation = await repository.get_by_id(conversation_id)
         if not existing_conversation:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Conversation with ID {conversation_id} not found"
             )
         
         # Check access permissions
         user_id = current_user.get('id') if current_user else None
-        if existing_conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
+        if existing_conversation.user_id != user_id and not (current_user.get('is_admin') if current_user else False):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="Access denied to this conversation"
             )
         
         # Prevent deletion of active conversations unless forced
         if existing_conversation.status == ConversationStatus.ACTIVE and not force:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=400,
                 detail="Cannot delete active conversation. Complete or archive it first, or use force=true"
             )
         
@@ -511,7 +511,7 @@ async def delete_conversation(
         deleted = await repository.delete(conversation_id)
         if not deleted:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status_code=500,
                 detail="Failed to delete conversation"
             )
     
@@ -519,7 +519,7 @@ async def delete_conversation(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to delete conversation: {str(e)}"
         )
 
@@ -554,15 +554,15 @@ async def list_messages(
         conversation = await conv_repository.get_by_id(conversation_id)
         if not conversation:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Conversation with ID {conversation_id} not found"
             )
         
         # Check access permissions
         user_id = current_user.get('id') if current_user else None
-        if conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
+        if conversation.user_id != user_id and not (current_user.get('is_admin') if current_user else False):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="Access denied to this conversation"
             )
         
@@ -608,12 +608,12 @@ async def list_messages(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to list messages: {str(e)}"
         )
 
 
-@router.post("/{conversation_id}/messages", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{conversation_id}/messages", response_model=MessageResponse, status_code=201)
 async def create_message(
     conversation_id: UUID,
     message_data: MessageCreate,
@@ -637,22 +637,22 @@ async def create_message(
         conversation = await conv_repository.get_by_id(conversation_id)
         if not conversation:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Conversation with ID {conversation_id} not found"
             )
         
         # Check access permissions
         user_id = current_user.get('id') if current_user else None
-        if conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
+        if conversation.user_id != user_id and not (current_user.get('is_admin') if current_user else False):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="Access denied to this conversation"
             )
         
         # Check if conversation is active
         if conversation.status not in [ConversationStatus.ACTIVE, ConversationStatus.PAUSED]:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=400,
                 detail="Cannot add messages to completed or archived conversations"
             )
         
@@ -701,7 +701,7 @@ async def create_message(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to create message: {str(e)}"
         )
 
@@ -722,15 +722,15 @@ async def get_message(
         conversation = await conv_repository.get_by_id(conversation_id)
         if not conversation:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Conversation with ID {conversation_id} not found"
             )
         
         # Check access permissions
         user_id = current_user.get('id') if current_user else None
-        if conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
+        if conversation.user_id != user_id and not (current_user.get('is_admin') if current_user else False):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="Access denied to this conversation"
             )
         
@@ -738,7 +738,7 @@ async def get_message(
         message = await msg_repository.get_by_id(message_id)
         if not message or message.conversation_id != conversation_id:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Message with ID {message_id} not found in this conversation"
             )
         
@@ -748,7 +748,7 @@ async def get_message(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to get message: {str(e)}"
         )
 
@@ -777,15 +777,15 @@ async def get_conversation_stats(
         conversation = await conv_repository.get_by_id(conversation_id)
         if not conversation:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Conversation with ID {conversation_id} not found"
             )
         
         # Check access permissions
         user_id = current_user.get('id') if current_user else None
-        if conversation.user_id != user_id and not current_user.get('is_admin') if current_user else False:
+        if conversation.user_id != user_id and not (current_user.get('is_admin') if current_user else False):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="Access denied to this conversation"
             )
         
@@ -855,7 +855,7 @@ async def get_conversation_stats(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to get conversation stats: {str(e)}"
         )
 
@@ -884,7 +884,7 @@ async def search_conversations(
         repository = PostgreSQLRepository(db, Conversation)
         
         # Start with user's conversations (unless admin)
-        if not current_user.get('is_admin') if current_user else False:
+        if not (current_user.get('is_admin') if current_user else False):
             user_conversations = await repository.find_by_criteria(user_id=current_user.get('id') if current_user else None)
         else:
             user_conversations = await repository.find_by_criteria()
@@ -892,7 +892,7 @@ async def search_conversations(
         conversations = user_conversations
         
         # Apply filters
-        if search_request.user_ids and current_user.get('is_admin') if current_user else False:
+        if search_request.user_ids and (current_user.get('is_admin') if current_user else False):
             conversations = [c for c in conversations if c.user_id in search_request.user_ids]
         
         if search_request.project_ids:
@@ -955,6 +955,6 @@ async def search_conversations(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to search conversations: {str(e)}"
         )

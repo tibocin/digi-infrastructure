@@ -270,7 +270,22 @@ async def list_prompt_templates(
         # Convert to response schema
         response_templates = []
         for template in paginated_templates:
-            template_data = PromptTemplateResponse.model_validate(template)
+            # Convert to dict to avoid SQLAlchemy greenlet issues
+            template_dict = {
+                "id": template.id,
+                "name": template.name,
+                "description": template.description,
+                "category": template.category,
+                "tags": template.tags,
+                "status": template.status,
+                "is_system": template.is_system,
+                "author": template.author,
+                "version_count": template.version_count,
+                "usage_count": 0,  # Default value since model doesn't have this field
+                "created_at": template.created_at,
+                "updated_at": template.updated_at
+            }
+            template_data = PromptTemplateResponse.model_validate(template_dict)
             
             # Include versions if requested
             if include_versions and template.versions:
@@ -344,7 +359,22 @@ async def create_prompt_template(
         )
         
         created_template = await repository.create(new_template)
-        return PromptTemplateResponse.model_validate(created_template)
+        # Convert to dict to avoid SQLAlchemy greenlet issues
+        template_dict = {
+            'id': created_template.id,
+            'name': created_template.name,
+            'description': created_template.description,
+            'category': created_template.category,
+            'tags': created_template.tags,
+            'status': created_template.status,
+            'is_system': created_template.is_system,
+            'author': created_template.author,
+            'version_count': created_template.version_count,
+            'usage_count': created_template.usage_count,
+            'created_at': created_template.created_at,
+            'updated_at': created_template.updated_at
+        }
+        return PromptTemplateResponse.model_validate(template_dict)
     
     except HTTPException:
         raise
@@ -381,7 +411,22 @@ async def get_prompt_template(
                 detail=f"Template with ID {template_id} not found"
             )
         
-        template_data = PromptTemplateResponse.model_validate(template)
+        # Convert to dict to avoid SQLAlchemy greenlet issues
+            template_dict = {
+                "id": template.id,
+                "name": template.name,
+                "description": template.description,
+                "category": template.category,
+                "tags": template.tags,
+                "status": template.status,
+                "is_system": template.is_system,
+                "author": template.author,
+                "version_count": template.version_count,
+                "usage_count": 0,  # Default value since model doesn't have this field
+                "created_at": template.created_at,
+                "updated_at": template.updated_at
+            }
+            template_data = PromptTemplateResponse.model_validate(template_dict)
         
         # Include versions if requested
         if include_versions and template.versions:
@@ -542,9 +587,12 @@ async def create_prompt_version(
                 detail=f"Template with ID {template_id} not found"
             )
         
-        # For now, use a simple approach: increment from template version count
-        # In a production environment, this would query the actual versions
-        next_version = template.version_count + 1
+        # Get the actual next version number by querying existing versions
+        existing_versions = await version_repo.find_by_criteria(template_id=template_id)
+        if existing_versions:
+            next_version = max(v.version_number for v in existing_versions) + 1
+        else:
+            next_version = 1
         
         # Create version
         new_version = PromptVersion(

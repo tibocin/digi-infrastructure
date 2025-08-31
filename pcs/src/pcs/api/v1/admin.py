@@ -12,7 +12,7 @@ from typing import List, Optional, Dict, Any, Union
 from uuid import UUID, uuid4
 from datetime import datetime, timedelta, UTC
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -230,7 +230,7 @@ async def get_system_stats(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to get system stats: {str(e)}"
         )
 
@@ -432,7 +432,7 @@ async def perform_database_maintenance(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Database maintenance failed: {str(e)}"
         )
 
@@ -518,7 +518,7 @@ async def get_query_performance(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to get query performance: {str(e)}"
         )
 
@@ -562,7 +562,7 @@ async def manage_cache(
         elif operation == "clear_pattern":
             if not pattern:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=400,
                     detail="Pattern required for clear_pattern operation"
                 )
             cache_results["keys_processed"] = f"pattern:{pattern}"
@@ -585,7 +585,7 @@ async def manage_cache(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Cache management failed: {str(e)}"
         )
 
@@ -666,7 +666,7 @@ async def list_users(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to list users: {str(e)}"
         )
 
@@ -751,7 +751,7 @@ async def manage_users(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"User management failed: {str(e)}"
         )
 
@@ -803,7 +803,7 @@ async def get_system_config(
                 return {section: config_data[section]}
             else:
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
+                    status_code=404,
                     detail=f"Configuration section '{section}' not found"
                 )
         
@@ -811,7 +811,7 @@ async def get_system_config(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to get system config: {str(e)}"
         )
 
@@ -887,6 +887,6 @@ async def get_system_logs(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to get system logs: {str(e)}"
         )
