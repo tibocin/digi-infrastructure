@@ -48,8 +48,8 @@ class TestExportFunctionality:
         
         assert result["collection_name"] == "test_collection"
         assert len(result["embeddings"]) == 2
-        assert result["embeddings"][0] == [0.1, 0.2, 0.3]
-        assert result["embeddings"][1] == [0.4, 0.5, 0.6]
+        assert np.array_equal(result["embeddings"][0], [0.1, 0.2, 0.3])
+        assert np.array_equal(result["embeddings"][1], [0.4, 0.5, 0.6])
         assert result["format"] == "numpy"
         assert result["document_count"] == 2
         assert result["tenant_id"] is None
@@ -123,8 +123,8 @@ class TestExportFunctionality:
         
         assert result["tenant_id"] == "tenant1"
         assert len(result["embeddings"]) == 2  # Only tenant1 documents
-        assert result["embeddings"][0] == [0.1, 0.2, 0.3]
-        assert result["embeddings"][1] == [0.7, 0.8, 0.9]
+        assert np.array_equal(result["embeddings"][0], [0.1, 0.2, 0.3])
+        assert np.array_equal(result["embeddings"][1], [0.7, 0.8, 0.9])
     
     @pytest.mark.asyncio
     async def test_export_embeddings_empty_collection(self, repository, mock_qdrant_client):

@@ -319,16 +319,15 @@ class EnhancedQdrantRepository:
     async def export_embeddings(
         self,
         collection_name: str,
-        output_format: str = "json",
-        include_vectors: bool = True,
-        include_payload: bool = True,
+        format_type: str = "numpy",
+        include_metadata: bool = True,
         tenant_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Export embeddings from a collection."""
         # Note: The underlying export function doesn't support tenant_id yet
         # This is a compatibility layer for tests
         return await export_embeddings(
-            collection_name, output_format, include_vectors, include_payload
+            self.client, collection_name, format_type, include_metadata, tenant_id
         )
     
     async def get_collection_statistics(

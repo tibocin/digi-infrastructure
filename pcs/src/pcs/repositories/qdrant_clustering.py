@@ -24,13 +24,23 @@ async def kmeans_clustering(
         raise TypeError("embeddings cannot be None")
     
     try:
-        if not embeddings:
-            return {
-                "clusters": n_clusters,  # Return requested clusters even for empty input
-                "centroids": [],
-                "labels": [],
-                "algorithm": "kmeans"
-            }
+        # Handle numpy arrays and other iterables
+        if hasattr(embeddings, 'size'):  # numpy array
+            if embeddings.size == 0:
+                return {
+                    "clusters": n_clusters,  # Return requested clusters even for empty input
+                    "centroids": [],
+                    "labels": [],
+                    "algorithm": "kmeans"
+                }
+        else:  # regular list or other iterable
+            if not embeddings:
+                return {
+                    "clusters": n_clusters,  # Return requested clusters even for empty input
+                    "centroids": [],
+                    "labels": [],
+                    "algorithm": "kmeans"
+                }
         
         # Simple k-means implementation for testing
         # Limit clusters to available points, but return requested clusters count
@@ -60,17 +70,32 @@ async def dbscan_clustering(
         raise TypeError("embeddings cannot be None")
     
     try:
-        if not embeddings:
-            return {
-                "clusters": 1,  # DBSCAN always returns 1 cluster
-                "centroids": [],
-                "labels": [],
-                "algorithm": "dbscan"
-            }
+        # Handle numpy arrays and other iterables
+        if hasattr(embeddings, 'size'):  # numpy array
+            if embeddings.size == 0:
+                return {
+                    "clusters": 1,  # DBSCAN always returns 1 cluster
+                    "centroids": [],
+                    "labels": [],
+                    "algorithm": "dbscan"
+                }
+        else:  # regular list or other iterable
+            if not embeddings:
+                return {
+                    "clusters": 1,  # DBSCAN always returns 1 cluster
+                    "centroids": [],
+                    "labels": [],
+                    "algorithm": "dbscan"
+                }
         
         # Simple DBSCAN-like implementation for testing
         # For now, treat all points as one cluster
-        centroids = [embeddings[0]] if embeddings else []
+        if hasattr(embeddings, 'size') and embeddings.size > 0:  # numpy array
+            centroids = [embeddings[0].tolist()]
+        elif len(embeddings) > 0:  # regular list
+            centroids = [embeddings[0]]
+        else:
+            centroids = []
         labels = [0] * len(embeddings)
         
         return {
