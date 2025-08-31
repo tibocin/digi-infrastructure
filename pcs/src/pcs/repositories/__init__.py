@@ -24,7 +24,7 @@ except ImportError:
     _has_neo4j = False
 
 try:
-    from .qdrant_repo import QdrantRepository
+    from .qdrant_repo import EnhancedQdrantHTTPRepository as QdrantRepository
     _has_qdrant = True
 except ImportError:
     QdrantRepository = None
