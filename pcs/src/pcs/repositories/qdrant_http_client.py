@@ -363,6 +363,163 @@ class QdrantHTTPClient:
         except QdrantHTTPError as e:
             logger.error(f"Failed to get stats for collection {collection_name}: {e}")
             raise
+    
+    def collection_exists(self, collection_name: str) -> bool:
+        """Check if a collection exists."""
+        try:
+            response = self._make_request("GET", f"/collections/{collection_name}")
+            return response.get("result") is not None
+        except QdrantHTTPError as e:
+            if hasattr(e, 'status_code') and e.status_code == 404:
+                return False
+            logger.error(f"Failed to check collection existence {collection_name}: {e}")
+            raise
+    
+    def scroll(
+        self,
+        collection_name: str,
+        limit: int = 10000,
+        offset: Optional[str] = None,
+        with_payload: bool = True,
+        with_vectors: bool = False,
+        filter_conditions: Optional[Dict[str, Any]] = None
+    ) -> Tuple[List[QdrantSearchResult], Optional[str]]:
+        """Scroll through points in a collection."""
+        try:
+            # Build scroll request
+            scroll_data = {
+                "limit": limit,
+                "with_payload": with_payload,
+                "with_vector": with_vectors
+            }
+            
+            if offset:
+                scroll_data["offset"] = offset
+            
+            if filter_conditions:
+                scroll_data["filter"] = filter_conditions
+            
+            response = self._make_request("POST", f"/collections/{collection_name}/points/scroll", data=scroll_data)
+            
+            # Convert response to search results
+            results = []
+            for item in response.get("result", {}).get("points", []):
+                # Extract original ID from payload if available
+                payload = item.get("payload") or {}
+                original_id = payload.get("original_id", str(item["id"]))
+                
+                result = QdrantSearchResult(
+                    id=original_id,
+                    score=1.0,  # Scroll doesn't return scores
+                    payload=payload,
+                    vector=item.get("vector"),
+                    version=item.get("version")
+                )
+                results.append(result)
+            
+            next_offset = response.get("result", {}).get("next_page_offset")
+            
+            logger.info(f"Scroll returned {len(results)} results from collection: {collection_name}")
+            return results, next_offset
+            
+        except QdrantHTTPError as e:
+            logger.error(f"Failed to scroll through collection {collection_name}: {e}")
+            raise
+    
+    def retrieve(
+        self,
+        collection_name: str,
+        ids: List[Union[str, int]],
+        with_payload: bool = True,
+        with_vectors: bool = False
+    ) -> List[QdrantSearchResult]:
+        """Retrieve specific points by IDs."""
+        try:
+            # Build retrieve request
+            retrieve_data = {
+                "ids": ids,
+                "with_payload": with_payload,
+                "with_vector": with_vectors
+            }
+            
+            response = self._make_request("POST", f"/collections/{collection_name}/points", data=retrieve_data)
+            
+            # Convert response to search results
+            results = []
+            for item in response.get("result", []):
+                # Extract original ID from payload if available
+                payload = item.get("payload") or {}
+                original_id = payload.get("original_id", str(item["id"]))
+                
+                result = QdrantSearchResult(
+                    id=original_id,
+                    score=1.0,  # Retrieve doesn't return scores
+                    payload=payload,
+                    vector=item.get("vector"),
+                    version=item.get("version")
+                )
+                results.append(result)
+            
+            logger.info(f"Retrieved {len(results)} points from collection: {collection_name}")
+            return results
+            
+        except QdrantHTTPError as e:
+            logger.error(f"Failed to retrieve points from collection {collection_name}: {e}")
+            raise
+    
+    def upsert(
+        self,
+        collection_name: str,
+        points: List[QdrantPoint]
+    ) -> Dict[str, Any]:
+        """Alias for upsert_points for compatibility."""
+        return self.upsert_points(collection_name, points)
+    
+    def delete(
+        self,
+        collection_name: str,
+        points_selector: Union[List[Union[str, int]], Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Delete points using selector (IDs or filter)."""
+        if isinstance(points_selector, list):
+            return self.delete_points(collection_name, points_selector)
+        else:
+            # Filter-based deletion
+            try:
+                data = {"filter": points_selector}
+                response = self._make_request("POST", f"/collections/{collection_name}/points/delete", data=data)
+                
+                logger.info(f"Successfully deleted points with filter from collection: {collection_name}")
+                return response.get("result", {})
+                
+            except QdrantHTTPError as e:
+                logger.error(f"Failed to delete points with filter from collection {collection_name}: {e}")
+                raise
+    
+    def update_collection(
+        self,
+        collection_name: str,
+        optimizers_config: Optional[Dict[str, Any]] = None,
+        hnsw_config: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Update collection configuration."""
+        try:
+            update_data = {}
+            
+            if optimizers_config:
+                update_data["optimizers_config"] = optimizers_config
+            
+            if hnsw_config:
+                update_data["hnsw_config"] = hnsw_config
+            
+            response = self._make_request("PATCH", f"/collections/{collection_name}", data=update_data)
+            
+            logger.info(f"Successfully updated collection: {collection_name}")
+            return response.get("result", {})
+            
+        except QdrantHTTPError as e:
+            logger.error(f"Failed to update collection {collection_name}: {e}")
+            raise
 
 
 class AsyncQdrantHTTPClient(QdrantHTTPClient):
@@ -458,7 +615,190 @@ class AsyncQdrantHTTPClient(QdrantHTTPClient):
             return response.get("result", False)
         except HTTPStatusError as e:
             if e.response.status_code == 409:  # Collection already exists
-                self.logger.warning(f"Collection {collection_name} already exists")
+                logger.warning(f"Collection {collection_name} already exists")
                 return True
             raise QdrantHTTPError(f"Failed to create collection: {e}", e.response.status_code)
-    # Add other async methods as needed...
+    
+    async def collection_exists_async(self, collection_name: str) -> bool:
+        """Async check if a collection exists."""
+        try:
+            response = await self._make_request_async("GET", f"/collections/{collection_name}")
+            return response.get("result") is not None
+        except QdrantHTTPError as e:
+            if hasattr(e, 'status_code') and e.status_code == 404:
+                return False
+            logger.error(f"Failed to check collection existence {collection_name}: {e}")
+            raise
+    
+    async def scroll_async(
+        self,
+        collection_name: str,
+        limit: int = 10000,
+        offset: Optional[str] = None,
+        with_payload: bool = True,
+        with_vectors: bool = False,
+        filter_conditions: Optional[Dict[str, Any]] = None
+    ) -> Tuple[List[QdrantSearchResult], Optional[str]]:
+        """Async scroll through points in a collection."""
+        try:
+            # Build scroll request
+            scroll_data = {
+                "limit": limit,
+                "with_payload": with_payload,
+                "with_vector": with_vectors
+            }
+            
+            if offset:
+                scroll_data["offset"] = offset
+            
+            if filter_conditions:
+                scroll_data["filter"] = filter_conditions
+            
+            response = await self._make_request_async("POST", f"/collections/{collection_name}/points/scroll", data=scroll_data)
+            
+            # Convert response to search results
+            results = []
+            for item in response.get("result", {}).get("points", []):
+                # Extract original ID from payload if available
+                payload = item.get("payload") or {}
+                original_id = payload.get("original_id", str(item["id"]))
+                
+                result = QdrantSearchResult(
+                    id=original_id,
+                    score=1.0,  # Scroll doesn't return scores
+                    payload=payload,
+                    vector=item.get("vector"),
+                    version=item.get("version")
+                )
+                results.append(result)
+            
+            next_offset = response.get("result", {}).get("next_page_offset")
+            
+            logger.info(f"Async scroll returned {len(results)} results from collection: {collection_name}")
+            return results, next_offset
+            
+        except QdrantHTTPError as e:
+            logger.error(f"Failed to async scroll through collection {collection_name}: {e}")
+            raise
+    
+    async def retrieve_async(
+        self,
+        collection_name: str,
+        ids: List[Union[str, int]],
+        with_payload: bool = True,
+        with_vectors: bool = False
+    ) -> List[QdrantSearchResult]:
+        """Async retrieve specific points by IDs."""
+        try:
+            # Build retrieve request
+            retrieve_data = {
+                "ids": ids,
+                "with_payload": with_payload,
+                "with_vector": with_vectors
+            }
+            
+            response = await self._make_request_async("POST", f"/collections/{collection_name}/points", data=retrieve_data)
+            
+            # Convert response to search results
+            results = []
+            for item in response.get("result", []):
+                # Extract original ID from payload if available
+                payload = item.get("payload") or {}
+                original_id = payload.get("original_id", str(item["id"]))
+                
+                result = QdrantSearchResult(
+                    id=original_id,
+                    score=1.0,  # Retrieve doesn't return scores
+                    payload=payload,
+                    vector=item.get("vector"),
+                    version=item.get("version")
+                )
+                results.append(result)
+            
+            logger.info(f"Async retrieved {len(results)} points from collection: {collection_name}")
+            return results
+            
+        except QdrantHTTPError as e:
+            logger.error(f"Failed to async retrieve points from collection {collection_name}: {e}")
+            raise
+    
+    async def upsert_async(
+        self,
+        collection_name: str,
+        points: List[QdrantPoint]
+    ) -> Dict[str, Any]:
+        """Async upsert points in a collection."""
+        try:
+            # Convert points to Qdrant format
+            qdrant_points = []
+            for i, point in enumerate(points):
+                point_id = i + 1  # Start from 1
+                
+                # Add original ID to payload for reference
+                payload = point.payload or {}
+                payload["original_id"] = str(point.id)
+                
+                qdrant_point = {
+                    "id": point_id,
+                    "vector": point.vector,
+                    "payload": payload
+                }
+                qdrant_points.append(qdrant_point)
+            
+            # Use the exact format that works in our simple test
+            data = {"points": qdrant_points}
+            response = await self._make_request_async("PUT", f"/collections/{collection_name}/points", data=data)
+            
+            logger.info(f"Successfully async upserted {len(points)} points in collection: {collection_name}")
+            return response.get("result", {})
+            
+        except QdrantHTTPError as e:
+            logger.error(f"Failed to async upsert points in collection {collection_name}: {e}")
+            raise
+    
+    async def search_points_async(
+        self,
+        collection_name: str,
+        query_vector: List[float],
+        limit: int = 10,
+        score_threshold: Optional[float] = None,
+        filter_conditions: Optional[Dict[str, Any]] = None
+    ) -> List[QdrantSearchResult]:
+        """Async search for similar points in a collection."""
+        try:
+            # Build search request
+            search_data = {
+                "vector": query_vector,
+                "limit": limit
+            }
+            
+            if score_threshold is not None:
+                search_data["score_threshold"] = score_threshold
+            
+            if filter_conditions:
+                search_data["filter"] = filter_conditions
+            
+            response = await self._make_request_async("POST", f"/collections/{collection_name}/points/search", data=search_data)
+            
+            # Convert response to search results
+            results = []
+            for item in response.get("result", []):
+                # Extract original ID from payload if available
+                payload = item.get("payload") or {}
+                original_id = payload.get("original_id", str(item["id"]))
+                
+                result = QdrantSearchResult(
+                    id=original_id,  # Use original ID for consistency
+                    score=item["score"],
+                    payload=payload,
+                    vector=item.get("vector"),
+                    version=item.get("version")
+                )
+                results.append(result)
+            
+            logger.info(f"Async search returned {len(results)} results from collection: {collection_name}")
+            return results
+            
+        except QdrantHTTPError as e:
+            logger.error(f"Failed to async search points in collection {collection_name}: {e}")
+            raise
