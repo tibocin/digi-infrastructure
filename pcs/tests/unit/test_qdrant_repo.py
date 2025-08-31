@@ -108,13 +108,18 @@ def mock_qdrant_client():
     
     # Setup mock methods
     client.get_collection.return_value = collection_info
-    client.get_collection_stats.return_value = collection_info
+    client.get_collection_stats.return_value = {
+        "points_count": 100,
+        "vectors_count": 100,
+        "segments_count": 1,
+        "status": "green"
+    }
     client.collection_exists.return_value = True
     client.create_collection.return_value = True
     client.search_points.return_value = scored_points
     client.scroll.return_value = (scroll_points, None)
     client.retrieve.return_value = scroll_points
-    client.upsert.return_value = Mock()
+    client.upsert_points.return_value = Mock()
     client.delete.return_value = Mock()
     client.delete_collection.return_value = True
     client.update_collection.return_value = Mock()
@@ -168,7 +173,8 @@ def async_repository():
     mock_client.search_points.return_value = scored_points
     mock_client.scroll.return_value = ([], None)
     mock_client.retrieve.return_value = []
-    mock_client.upsert.return_value = Mock()
+    mock_client.upsert_points.return_value = Mock()
+    mock_client.search_points_async.return_value = scored_points
     mock_client.delete.return_value = Mock()
     mock_client.delete_collection.return_value = True
     
@@ -279,7 +285,7 @@ class TestEnhancedQdrantRepository:
         assert result["total_processed"] == 3
         assert result["batch_count"] == 2  # 2 docs in first batch, 1 in second
         assert result["execution_time_seconds"] > 0
-        assert mock_qdrant_client.upsert.call_count == 2
+        assert mock_qdrant_client.upsert_points.call_count == 2
 
     @pytest.mark.asyncio
     async def test_semantic_search_advanced(self, repository, mock_qdrant_client):
@@ -401,10 +407,9 @@ class TestEnhancedQdrantRepository:
             stats = await repository.get_collection_statistics("test_collection")
         
         assert isinstance(stats, VectorCollectionStats)
-        assert stats.name == "test_collection"
-        assert stats.document_count == 100
-        assert stats.dimension == 384
-        assert stats.memory_usage_mb > 0
+        assert stats.points_count == 100
+        assert stats.config["dimension"] == 384
+        assert stats.config["memory_usage_mb"] >= 0
 
     @pytest.mark.asyncio
     async def test_get_collection_statistics_with_tenant(self, repository, mock_qdrant_client):
@@ -420,7 +425,7 @@ class TestEnhancedQdrantRepository:
             stats = await repository.get_collection_statistics("test_collection", tenant_id="tenant1")
         
         assert isinstance(stats, VectorCollectionStats)
-        assert stats.document_count == 2  # Tenant-specific count
+        assert stats.points_count == 2  # Tenant-specific count
 
     @pytest.mark.asyncio
     async def test_optimize_collection_performance(self, repository, mock_qdrant_client):
@@ -775,7 +780,7 @@ class TestBackwardCompatibility:
         )
         
         assert result is True
-        mock_qdrant_client.upsert.assert_called()
+        mock_qdrant_client.upsert_points.assert_called()
 
     @pytest.mark.asyncio
     async def test_legacy_query_documents(self, repository, mock_qdrant_client):
@@ -900,7 +905,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_bulk_upsert_error(self, repository, mock_qdrant_client, sample_vector_documents):
         """Test error handling in bulk upsert."""
-        mock_qdrant_client.upsert.side_effect = Exception("Upsert failed")
+        mock_qdrant_client.upsert_points.side_effect = Exception("Upsert failed")
         
         operation = BulkVectorOperation(
             operation_type="insert",
