@@ -23,6 +23,8 @@ from qdrant_client.models import Distance, PointStruct
 
 from pcs.repositories.qdrant_repo import (
     EnhancedQdrantRepository,
+)
+from pcs.repositories.qdrant_types import (
     VectorDocument,
     SimilarityResult,
     SimilarityAlgorithm,
@@ -255,7 +257,7 @@ class TestEnhancedQdrantRepository:
             optimizers_config={"deleted_threshold": 0.2}
         )
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             result = await repository.create_collection_optimized(
                 collection_name=config.name,
                 vector_size=config.vector_size,
@@ -279,7 +281,7 @@ class TestEnhancedQdrantRepository:
             tenant_id="tenant1"
         )
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             result = await repository.bulk_upsert_documents("test_collection", operation)
         
         assert result["total_processed"] == 3
@@ -326,7 +328,7 @@ class TestEnhancedQdrantRepository:
             tenant_id="tenant1"
         )
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             results = await repository.semantic_search_advanced(request)
         
         assert len(results) == 2  # Based on mock data
@@ -376,7 +378,7 @@ class TestEnhancedQdrantRepository:
         ]
         mock_qdrant_client.scroll.return_value = (scroll_points, None)
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             result = await repository.cluster_documents(
                 collection_name="test_collection",
                 n_clusters=2,
@@ -394,7 +396,7 @@ class TestEnhancedQdrantRepository:
         """Test clustering with empty collection."""
         mock_qdrant_client.scroll.return_value = ([], None)
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             result = await repository.cluster_documents("test_collection", n_clusters=2)
         
         assert result["clusters"] == []
@@ -403,7 +405,7 @@ class TestEnhancedQdrantRepository:
     @pytest.mark.asyncio
     async def test_get_collection_statistics(self, repository, mock_qdrant_client):
         """Test getting comprehensive collection statistics."""
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             stats = await repository.get_collection_statistics("test_collection")
         
         assert isinstance(stats, VectorCollectionStats)
@@ -421,7 +423,7 @@ class TestEnhancedQdrantRepository:
         ]
         mock_qdrant_client.scroll.return_value = (scroll_points, None)
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             stats = await repository.get_collection_statistics("test_collection", tenant_id="tenant1")
         
         assert isinstance(stats, VectorCollectionStats)
@@ -430,7 +432,7 @@ class TestEnhancedQdrantRepository:
     @pytest.mark.asyncio
     async def test_optimize_collection_performance(self, repository, mock_qdrant_client):
         """Test collection performance optimization."""
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             result = await repository.optimize_collection_performance("test_collection")
         
         assert "before_optimization" in result
@@ -441,7 +443,7 @@ class TestEnhancedQdrantRepository:
     @pytest.mark.asyncio
     async def test_export_embeddings_numpy(self, repository, mock_qdrant_client):
         """Test exporting embeddings in numpy format."""
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             result = await repository.export_embeddings(
                 collection_name="test_collection",
                 format_type="numpy",
@@ -458,7 +460,7 @@ class TestEnhancedQdrantRepository:
     @pytest.mark.asyncio
     async def test_export_embeddings_json(self, repository, mock_qdrant_client):
         """Test exporting embeddings in JSON format."""
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             result = await repository.export_embeddings(
                 collection_name="test_collection",
                 format_type="json",
@@ -473,7 +475,7 @@ class TestEnhancedQdrantRepository:
     @pytest.mark.asyncio
     async def test_export_embeddings_with_tenant(self, repository, mock_qdrant_client):
         """Test exporting embeddings with tenant filtering."""
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             result = await repository.export_embeddings(
                 collection_name="test_collection",
                 format_type="json",
@@ -947,7 +949,7 @@ class TestErrorHandling:
         ]
         mock_qdrant_client.scroll.return_value = (scroll_points, None)
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             with pytest.raises(RepositoryError, match="Failed to cluster documents"):
                 await repository.cluster_documents(
                     "test_collection",
@@ -967,7 +969,7 @@ class TestMultiTenancy:
             tenant_id="tenant1"
         )
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             await repository.semantic_search_advanced(request)
         
         # Verify tenant filter was applied
@@ -978,7 +980,7 @@ class TestMultiTenancy:
     @pytest.mark.asyncio
     async def test_tenant_isolation_in_export(self, repository, mock_qdrant_client):
         """Test that tenant isolation works in export operations."""
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             result = await repository.export_embeddings(
                 collection_name="test_collection",
                 tenant_id="tenant1"
@@ -1025,7 +1027,7 @@ class TestAsyncRepository:
             tenant_id="tenant1"
         )
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             results = await async_repository.semantic_search_advanced(request)
         
         assert isinstance(results, list)
@@ -1040,7 +1042,7 @@ class TestAsyncRepository:
             distance=QdrantDistance.COSINE
         )
         
-        with patch('pcs.repositories.qdrant_repo.PerformanceMonitor'):
+        with patch('pcs.repositories.qdrant_performance.QdrantPerformanceMonitor'):
             result = await async_repository.create_collection_optimized(
                 collection_name=config.name,
                 vector_size=config.vector_size,

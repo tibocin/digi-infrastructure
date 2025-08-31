@@ -185,6 +185,7 @@ class EnhancedQdrantRepository:
         similarity_threshold: float = 0.7,
         algorithm: SimilarityAlgorithm = SimilarityAlgorithm.COSINE,
         rerank: bool = True,
+        tenant_id: Optional[str] = None,
         # Legacy parameter support
         query_embedding: Optional[List[float]] = None,
         n_results: Optional[int] = None
@@ -197,7 +198,7 @@ class EnhancedQdrantRepository:
             limit = n_results
             
         return await self.advanced_search.find_similar_documents(
-            collection_name, query_vector, limit, similarity_threshold, algorithm, rerank
+            collection_name, query_vector, limit, similarity_threshold, algorithm, rerank, tenant_id
         )
     
     async def search_with_metadata(

@@ -9,34 +9,15 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
 
-from .qdrant_types import SimilarityAlgorithm, QdrantSearchResult
+from .qdrant_types import SimilarityAlgorithm, QdrantSearchResult, VectorSearchRequest, SimilarityResult
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class VectorSearchRequest:
-    """Request structure for advanced vector search operations."""
-    collection_name: str
-    query_vector: List[float]
-    limit: int = 10
-    score_threshold: Optional[float] = None
-    filter_conditions: Optional[Dict[str, Any]] = None
-    similarity_algorithm: SimilarityAlgorithm = SimilarityAlgorithm.COSINE
-    include_vectors: bool = False
-    include_payload: bool = True
+# Import VectorSearchRequest from qdrant_types instead of defining locally
 
 
-@dataclass
-class SimilarityResult:
-    """Enhanced search result with similarity metrics and metadata."""
-    id: Union[str, int]
-    score: float
-    similarity_score: float
-    payload: Optional[Dict[str, Any]] = None
-    vector: Optional[List[float]] = None
-    version: Optional[int] = None
-    metadata: Optional[Dict[str, Any]] = None
+# Import SimilarityResult from qdrant_types instead of defining locally
 
 
 class QdrantAdvancedSearch:
@@ -137,7 +118,7 @@ class QdrantAdvancedSearch:
                 # Build metadata
                 metadata = {
                     "original_score": result.score,
-                    "similarity_algorithm": request.algorithm.value,
+                    "algorithm": request.algorithm.value,
                     "normalized_similarity": similarity_score
                 }
                 
@@ -158,7 +139,7 @@ class QdrantAdvancedSearch:
             
             self.logger.info(
                 f"Advanced semantic search completed for {request.collection_name}, "
-                f"found {len(enhanced_results)} results using {request.similarity_algorithm.value}"
+                f"found {len(enhanced_results)} results using {request.algorithm.value}"
             )
             
             return enhanced_results
@@ -228,7 +209,8 @@ class QdrantAdvancedSearch:
         limit: int = 10,
         similarity_threshold: float = 0.7,
         algorithm: SimilarityAlgorithm = SimilarityAlgorithm.COSINE,
-        rerank: bool = True
+        rerank: bool = True,
+        tenant_id: Optional[str] = None
     ) -> List[SimilarityResult]:
         """
         Find similar documents with enhanced similarity scoring and optional reranking.
@@ -240,6 +222,7 @@ class QdrantAdvancedSearch:
             similarity_threshold: Minimum similarity score threshold
             algorithm: Similarity algorithm to use
             rerank: Whether to apply reranking
+            tenant_id: Optional tenant ID for multi-tenancy support
             
         Returns:
             List of SimilarityResult objects
@@ -251,7 +234,8 @@ class QdrantAdvancedSearch:
                 query_vector=query_vector,
                 limit=limit,
                 score_threshold=similarity_threshold,
-                similarity_algorithm=algorithm,
+                algorithm=algorithm,
+                tenant_id=tenant_id,
                 include_vectors=rerank,  # Need vectors for reranking
                 include_payload=True
             )
@@ -340,7 +324,7 @@ class QdrantAdvancedSearch:
                 query_vector=query_vector,
                 limit=limit,
                 filter_conditions=qdrant_filter,
-                similarity_algorithm=algorithm,
+                algorithm=algorithm,
                 include_payload=True
             )
             
