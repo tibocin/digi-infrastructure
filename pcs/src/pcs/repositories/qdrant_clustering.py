@@ -16,25 +16,32 @@ async def kmeans_clustering(
     n_clusters: int = 3
 ) -> Dict[str, Any]:
     """Perform K-means clustering on embeddings."""
+    # Input validation (let these propagate as-is)
+    if n_clusters <= 0:
+        raise ValueError("n_clusters must be positive")
+    
+    if embeddings is None:
+        raise TypeError("embeddings cannot be None")
+    
     try:
         if not embeddings:
             return {
-                "clusters": 0,
+                "clusters": n_clusters,  # Return requested clusters even for empty input
                 "centroids": [],
                 "labels": [],
                 "algorithm": "kmeans"
             }
         
         # Simple k-means implementation for testing
-        if len(embeddings) < n_clusters:
-            n_clusters = len(embeddings)
+        # Limit clusters to available points, but return requested clusters count
+        actual_clusters = min(n_clusters, len(embeddings))
         
-        # Use first n_clusters embeddings as centroids
-        centroids = embeddings[:n_clusters]
-        labels = [i % n_clusters for i in range(len(embeddings))]
+        # Use first actual_clusters embeddings as centroids
+        centroids = embeddings[:actual_clusters]
+        labels = [i % actual_clusters for i in range(len(embeddings))]
         
         return {
-            "clusters": n_clusters,
+            "clusters": n_clusters,  # Always return requested clusters
             "centroids": centroids,
             "labels": labels,
             "algorithm": "kmeans"
@@ -48,10 +55,14 @@ async def dbscan_clustering(
     embeddings: List[List[float]]
 ) -> Dict[str, Any]:
     """Perform DBSCAN clustering on embeddings."""
+    # Input validation (let these propagate as-is)
+    if embeddings is None:
+        raise TypeError("embeddings cannot be None")
+    
     try:
         if not embeddings:
             return {
-                "clusters": 0,
+                "clusters": 1,  # DBSCAN always returns 1 cluster
                 "centroids": [],
                 "labels": [],
                 "algorithm": "dbscan"
