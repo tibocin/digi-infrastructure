@@ -181,11 +181,11 @@ class TestEnhancedQdrantRepository:
 
     def test_create_collection(self, repository, mock_qdrant_client):
         """Test collection creation."""
-        result = asyncio.run(repository.create_collection(
+        result = repository.create_collection(
             collection_name="new_collection",
             vector_size=512,
             distance="euclidean"
-        ))
+        )
         assert result is True
         mock_qdrant_client.create_collection.assert_called_once()
 
@@ -224,7 +224,7 @@ class TestEnhancedQdrantRepository:
         """Test document deletion."""
         result = repository.delete_documents("test_collection", ["doc1", "doc2"])
         assert result["result"]["status"] == "ok"
-        mock_qdrant_client.delete_points.assert_called_once_with("test_collection", ["doc1", "doc2"])
+        mock_qdrant_client.delete_points.assert_called_once_with("test_collection", ["doc1", "doc2"], True)
 
     def test_get_collection_stats(self, repository, mock_qdrant_client):
         """Test getting collection statistics."""
@@ -306,14 +306,15 @@ class TestEnhancedQdrantRepository:
 
     def test_build_query_filter(self, repository):
         """Test query filter building."""
-        request = VectorSearchRequest(
+        filter_conditions = repository._build_query_filter(
             tenant_id="tenant1",
-            metadata_filter={"type": "text"}
+            metadata_filters={"type": "text"}
         )
         
-        filter_conditions = repository._build_query_filter(request)
-        # Currently returns None as placeholder
-        assert filter_conditions is None
+        # Should return filter conditions
+        assert filter_conditions is not None
+        assert "must" in filter_conditions
+        assert len(filter_conditions["must"]) == 2  # tenant_id + metadata filter
 
     def test_context_manager(self, repository):
         """Test context manager functionality."""
@@ -349,7 +350,7 @@ class TestQdrantHTTPClient:
         assert client.api_key is None
         assert "api-key" not in client.headers
 
-    @patch('pcs.repositories.qdrant_repo.Client')
+    @patch('pcs.repositories.qdrant_http_client.Client')
     def test_make_request_success(self, mock_client_class):
         """Test successful HTTP request."""
         mock_client = Mock()
@@ -368,7 +369,7 @@ class TestQdrantHTTPClient:
         assert result == {"result": "success"}
         mock_client.get.assert_called_once()
 
-    @patch('pcs.repositories.qdrant_repo.Client')
+    @patch('pcs.repositories.qdrant_http_client.Client')
     def test_make_request_error(self, mock_client_class):
         """Test HTTP request with error response."""
         mock_client = Mock()

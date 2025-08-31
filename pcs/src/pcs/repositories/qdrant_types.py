@@ -187,6 +187,17 @@ class BulkVectorOperation:
     tenant_id: Optional[str] = None
     batch_size: int = 100
     metadata: Optional[Dict[str, Any]] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary representation with computed fields."""
+        return {
+            "operation_type": self.operation_type,
+            "collection_name": self.collection_name,
+            "documents_count": len(self.documents) if self.documents else 0,
+            "tenant_id": self.tenant_id,
+            "batch_size": self.batch_size,
+            "metadata": self.metadata or {}
+        }
 
 
 @dataclass

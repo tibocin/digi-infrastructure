@@ -411,7 +411,7 @@ class EnhancedQdrantRepository:
     
     def delete_documents(self, collection_name: str, document_ids: List[str]) -> Dict[str, Any]:
         """Legacy method for deleting documents."""
-        return delete_documents(collection_name, document_ids)
+        return self.core.delete_points(collection_name, document_ids)
     
     # ==================== UTILITY METHODS ====================
     
