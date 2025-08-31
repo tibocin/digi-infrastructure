@@ -127,14 +127,14 @@ class TestLegacyCompatibility:
             "test_collection",
             document_ids=["doc1", "doc2"]
         )
-        mock_qdrant_client.delete_points.assert_called_once_with("test_collection", ["doc1", "doc2"])
+        mock_qdrant_client.delete_points.assert_called_once_with("test_collection", ["doc1", "doc2"], True)
         
         # Test with ids parameter (legacy)
         result = repository.delete_documents(
             "test_collection",
             ids=["doc3", "doc4"]
         )
-        mock_qdrant_client.delete_points.assert_called_with("test_collection", ["doc3", "doc4"])
+        mock_qdrant_client.delete_points.assert_called_with("test_collection", ["doc3", "doc4"], True)
     
     def test_delete_documents_legacy_where_clause(self, repository, mock_qdrant_client):
         """Test legacy delete_documents method with where clause (warning)."""
@@ -152,7 +152,7 @@ class TestLegacyCompatibility:
     def test_delete_documents_legacy_no_ids(self, repository, mock_qdrant_client):
         """Test legacy delete_documents method with no IDs."""
         result = repository.delete_documents("test_collection")
-        mock_qdrant_client.delete_points.assert_called_once_with("test_collection", [])
+        mock_qdrant_client.delete_points.assert_called_once_with("test_collection", [], True)
 
 
 class TestLegacyMethodSignatures:
@@ -192,18 +192,18 @@ class TestLegacyParameterHandling:
         )
         
         # Should use ids parameter
-        mock_qdrant_client.delete_points.assert_called_once_with("test_collection", ["doc2"])
+        mock_qdrant_client.delete_points.assert_called_once_with("test_collection", ["doc2"], True)
     
     def test_delete_documents_empty_parameters(self, repository, mock_qdrant_client):
         """Test delete_documents with empty parameters."""
         result = repository.delete_documents("test_collection")
-        mock_qdrant_client.delete_points.assert_called_once_with("test_collection", [])
+        mock_qdrant_client.delete_points.assert_called_once_with("test_collection", [], True)
         
         result = repository.delete_documents("test_collection", document_ids=[])
-        mock_qdrant_client.delete_points.assert_called_with("test_collection", [])
+        mock_qdrant_client.delete_points.assert_called_with("test_collection", [], True)
         
         result = repository.delete_documents("test_collection", ids=[])
-        mock_qdrant_client.delete_points.assert_called_with("test_collection", [])
+        mock_qdrant_client.delete_points.assert_called_with("test_collection", [], True)
 
 
 class TestLegacyErrorHandling:

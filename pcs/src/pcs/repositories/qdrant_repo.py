@@ -387,30 +387,58 @@ class EnhancedQdrantRepository:
     
     async def get_collection(self, collection_name: str) -> bool:
         """Legacy method for collection existence check."""
-        return await get_collection(collection_name)
+        return await get_collection(self, collection_name)
     
     async def add_documents(self, collection_name: str, documents: List[Any]) -> Dict[str, Any]:
         """Legacy method for adding documents."""
-        return await add_documents(collection_name, documents)
+        return await add_documents(self, collection_name, documents)
     
-    async def query_documents(self, collection_name: str, query: str) -> List[Any]:
+    async def query_documents(
+        self, 
+        collection_name: str, 
+        query_embedding: List[float],
+        n_results: int = 10,
+        tenant_id: Optional[str] = None
+    ) -> List[Any]:
         """Legacy method for querying documents."""
-        return await query_documents(collection_name, query)
+        return await query_documents(self, collection_name, query_embedding, n_results, tenant_id)
     
-    async def get_documents(self, collection_name: str) -> List[Any]:
-        """Legacy method for getting all documents."""
-        return await get_documents(collection_name)
+    async def get_documents(self, collection_name: str, document_ids: List[str]) -> List[Any]:
+        """Legacy method for getting documents by IDs."""
+        return await get_documents(self, collection_name, document_ids)
     
-    async def similarity_search(self, collection_name: str, query: str) -> List[Any]:
+    async def similarity_search(
+        self, 
+        collection_name: str, 
+        query_embedding: List[float],
+        n_results: int = 10,
+        tenant_id: Optional[str] = None
+    ) -> List[Any]:
         """Legacy method for similarity search."""
-        return await similarity_search(collection_name, query)
+        return await similarity_search(self, collection_name, query_embedding, n_results, tenant_id)
     
     async def count_documents(self, collection_name: str) -> int:
         """Legacy method for counting documents."""
-        return await count_documents(collection_name)
+        return await count_documents(self, collection_name)
     
-    def delete_documents(self, collection_name: str, document_ids: List[str]) -> Dict[str, Any]:
-        """Legacy method for deleting documents."""
+    def delete_documents(
+        self, 
+        collection_name: str, 
+        document_ids: Optional[List[str]] = None,
+        ids: Optional[List[str]] = None,
+        where: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Legacy method for deleting documents with backward compatibility."""
+        # Handle legacy parameter names
+        if ids is not None:
+            document_ids = ids
+        elif document_ids is None:
+            document_ids = []
+        
+        # TODO: Implement where clause filtering
+        if where is not None:
+            logger.warning("Filter-based deletion not yet implemented, using document IDs")
+        
         return self.core.delete_points(collection_name, document_ids)
     
     # ==================== UTILITY METHODS ====================

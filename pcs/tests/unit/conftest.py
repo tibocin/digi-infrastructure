@@ -123,7 +123,7 @@ def repository(mock_qdrant_client):
 @pytest.fixture
 def async_repository():
     """Create an enhanced Qdrant repository with async client for testing."""
-    mock_client = AsyncMock()
+    mock_client = Mock()  # Use regular Mock instead of AsyncMock
     
     # Mock collection info
     collection_info = Mock()
@@ -152,7 +152,7 @@ def async_repository():
         )
     ]
     
-    # Setup async mock methods
+    # Setup mock methods - return actual values, not coroutines
     mock_client.get_collection.return_value = collection_info
     mock_client.collection_exists.return_value = True
     mock_client.create_collection.return_value = True
@@ -160,10 +160,16 @@ def async_repository():
     mock_client.search_points.return_value = scored_points
     mock_client.scroll.return_value = ([], None)
     mock_client.retrieve.return_value = []
-    mock_client.upsert_points.return_value = Mock()
+    mock_client.upsert_points.return_value = {"status": "ok"}
     mock_client.search_points_async.return_value = scored_points
-    mock_client.delete.return_value = Mock()
+    mock_client.delete.return_value = {"status": "ok"}
     mock_client.delete_collection.return_value = True
+    mock_client.get_collection_stats.return_value = {
+        "points_count": 100,
+        "vectors_count": 100,
+        "segments_count": 1,
+        "status": "green"
+    }
     
     return EnhancedQdrantHTTPRepository(client=mock_client, use_async=True)
 

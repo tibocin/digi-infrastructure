@@ -226,7 +226,7 @@ class TestDataRetrieval:
         """Test error handling in collection statistics."""
         mock_qdrant_client.get_collection_stats.side_effect = Exception("Connection error")
         
-        with pytest.raises(Exception, match="Failed to get collection statistics"):
+        with pytest.raises(Exception, match="Failed to get stats for test_collection: Connection error"):
             await repository.get_collection_statistics("test_collection")
 
 
@@ -254,7 +254,8 @@ class TestTenantFiltering:
             tenant_id="tenant1"
         )
         assert len(result_tenant1["embeddings"]) == 1
-        assert result_tenant1["embeddings"][0] == [0.1, 0.2, 0.3]
+        # Use numpy array comparison for proper array equality
+        assert np.array_equal(result_tenant1["embeddings"][0], [0.1, 0.2, 0.3])
         
         # Export for tenant2
         result_tenant2 = await repository.export_embeddings(
@@ -262,7 +263,8 @@ class TestTenantFiltering:
             tenant_id="tenant2"
         )
         assert len(result_tenant2["embeddings"]) == 1
-        assert result_tenant2["embeddings"][0] == [0.4, 0.5, 0.6]
+        # Use numpy array comparison for proper array equality
+        assert np.array_equal(result_tenant2["embeddings"][0], [0.4, 0.5, 0.6])
     
     @pytest.mark.asyncio
     async def test_tenant_filtering_with_none_tenant(self, repository, mock_qdrant_client):

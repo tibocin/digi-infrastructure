@@ -20,7 +20,7 @@ async def get_collection(
 ) -> bool:
     """Legacy method: check if collection exists."""
     try:
-        info = repository.get_collection_info(collection_name)
+        info = repository.client.get_collection_info(collection_name)
         return info is not None
     except Exception:
         return False
@@ -43,7 +43,7 @@ async def query_documents(
     tenant_id: Optional[str] = None
 ) -> List[SimilarityResult]:
     """Legacy method: query documents by similarity."""
-    return repository.search_similar(
+    return await repository.search_similar(
         collection_name=collection_name,
         query_embedding=query_embedding,
         limit=n_results,
@@ -70,7 +70,7 @@ async def similarity_search(
     tenant_id: Optional[str] = None
 ) -> List[SimilarityResult]:
     """Legacy method: similarity search."""
-    return repository.search_similar(
+    return await repository.search_similar(
         collection_name=collection_name,
         query_embedding=query_embedding,
         limit=n_results,
@@ -80,11 +80,11 @@ async def similarity_search(
 
 async def count_documents(
     repository,
-    collection_name: str
+    collection_name: str,
 ) -> int:
     """Legacy method: count documents in collection."""
     try:
-        stats = repository.get_collection_stats(collection_name)
+        stats = repository.core.get_collection_stats(collection_name)
         return stats.points_count
     except Exception:
         return 0
