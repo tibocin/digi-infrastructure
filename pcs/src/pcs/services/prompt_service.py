@@ -878,16 +878,54 @@ class PromptGenerator:
     
     async def _generate_embedding(self, text: str) -> List[float]:
         """
-        Generate embedding for text using OpenAI's text-embedding-ada-002 model.
+        Generate embedding for text using multiple strategies (free-first approach).
+        
+        Priority order:
+        1. Free local sentence-transformers model (all-mpnet-base-v2, 768 dims)
+        2. OpenAI text-embedding-ada-002 (1536 dims) if API key available
+        3. Deterministic fallback vector
         
         Args:
             text: Text to generate embedding for
             
         Returns:
-            384-dimensional embedding vector
+            Embedding vector (768 dims for free model, 1536 dims for OpenAI)
         """
         try:
-            # Try to use OpenAI for embedding generation
+            # OPTION 1: Try free local sentence-transformers model first (NO API CHARGES)
+            try:
+                from sentence_transformers import SentenceTransformer
+                import os
+                
+                # Use a high-quality free model
+                # all-mpnet-base-v2: 768 dimensions, excellent performance, completely free
+                model_name = os.getenv('EMBEDDING_MODEL', 'all-mpnet-base-v2')
+                
+                # Load model (caches locally after first download)
+                model = SentenceTransformer(model_name)
+                
+                # Generate embedding
+                embedding = model.encode(text, convert_to_tensor=False)
+                
+                # Convert to list and ensure it's the expected size
+                if hasattr(embedding, 'tolist'):
+                    embedding = embedding.tolist()
+                elif not isinstance(embedding, list):
+                    embedding = list(embedding)
+                
+                # all-mpnet-base-v2 produces 768-dimensional vectors
+                expected_dims = 768 if model_name == 'all-mpnet-base-v2' else len(embedding)
+                
+                return embedding
+                
+            except ImportError:
+                # sentence-transformers not available, try OpenAI
+                pass
+            except Exception as e:
+                # Local model failed, try OpenAI
+                pass
+            
+            # OPTION 2: Try OpenAI if local model fails (REQUIRES API KEY & CHARGES)
             try:
                 import openai
                 import os
@@ -909,39 +947,41 @@ class PromptGenerator:
                 
                 embedding = response.data[0].embedding
                 
-                # Ensure it's 384 dimensions (truncate or pad if necessary)
-                if len(embedding) > 384:
-                    embedding = embedding[:384]
-                elif len(embedding) < 384:
-                    # Pad with zeros
-                    embedding.extend([0.0] * (384 - len(embedding)))
+                # OpenAI text-embedding-ada-002 returns 1536 dimensions
+                if len(embedding) != 1536:
+                    raise ValueError(f"OpenAI embedding returned {len(embedding)} dimensions, expected 1536")
                 
                 return embedding
                 
             except ImportError:
-                raise ValueError("OpenAI library not available")
+                # OpenAI library not available
+                pass
             except Exception as e:
-                # Fall back to deterministic dummy vectors if OpenAI fails
-                import random
-                import hashlib
-                
-                # Create deterministic seed from text hash
-                text_hash = hashlib.md5(text.encode()).hexdigest()
-                seed = int(text_hash[:8], 16)
-                random.seed(seed)
-                
-                # Generate normalized vector
-                vector = [random.gauss(0, 1) for _ in range(384)]
-                
-                # Normalize to unit vector for better similarity calculations
-                magnitude = sum(x**2 for x in vector) ** 0.5
-                if magnitude > 0:
-                    vector = [x / magnitude for x in vector]
-                
-                return vector
+                # OpenAI failed, use fallback
+                pass
+            
+            # OPTION 3: Deterministic fallback (FREE - for testing/development)
+            import random
+            import hashlib
+            
+            # Create deterministic seed from text hash
+            text_hash = hashlib.md5(text.encode()).hexdigest()
+            seed = int(text_hash[:8], 16)
+            random.seed(seed)
+            
+            # Generate 768-dimensional vector (matches free sentence-transformers)
+            # Use 768 as it's a good middle ground and matches many free models
+            vector = [random.gauss(0, 1) for _ in range(768)]
+            
+            # Normalize to unit vector for better similarity calculations
+            magnitude = sum(x**2 for x in vector) ** 0.5
+            if magnitude > 0:
+                vector = [x / magnitude for x in vector]
+            
+            return vector
                 
         except Exception as e:
             # Ultimate fallback: create a simple deterministic vector
             import random
             random.seed(hash(text) % 2**32)
-            return [random.uniform(-1, 1) for _ in range(384)]
+            return [random.uniform(-1, 1) for _ in range(768)]

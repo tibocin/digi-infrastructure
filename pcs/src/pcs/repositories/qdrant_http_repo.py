@@ -682,9 +682,9 @@ class EnhancedQdrantHTTPRepository:
                 
                 # Calculate memory usage (rough estimate) - use fixed vector size for now
                 try:
-                    vector_size = collection_info.get("config", {}).get("params", {}).get("vector", {}).get("size", 384)
+                    vector_size = collection_info.get("config", {}).get("params", {}).get("vector", {}).get("size", 768)
                     if not isinstance(vector_size, (int, float)) or vector_size == 0:
-                        vector_size = 384  # Default fallback
+                        vector_size = 768  # Default fallback for free models
                     
                     if not isinstance(document_count, (int, float)):
                         document_count = 100  # Test fallback
@@ -692,7 +692,7 @@ class EnhancedQdrantHTTPRepository:
                     memory_usage_mb = (document_count * vector_size * 4) / (1024 * 1024)  # 4 bytes per float
                 except (TypeError, AttributeError):
                     # Fallback for mock objects
-                    vector_size = 384
+                    vector_size = 768  # Match free models default
                     document_count = 100 if not isinstance(document_count, (int, float)) else document_count
                     memory_usage_mb = (document_count * vector_size * 4) / (1024 * 1024)
                 
@@ -1027,7 +1027,7 @@ class EnhancedQdrantHTTPRepository:
     ) -> bool:
         """Legacy create_collection method for backward compatibility."""
         if vector_size is None:
-            vector_size = 384
+            vector_size = 768  # Default to 768 for free models
         
         if distance is None:
             distance = "cosine"
@@ -1194,7 +1194,7 @@ class EnhancedQdrantHTTPRepository:
     async def create_collection_optimized(
         self,
         collection_name: str,
-        vector_size: int = 384,
+        vector_size: int = 768,  # Default to 768 for free sentence-transformers models
         distance: str = "cosine",
         hnsw_config: Optional[Dict[str, Any]] = None,
         optimizers_config: Optional[Dict[str, Any]] = None,
