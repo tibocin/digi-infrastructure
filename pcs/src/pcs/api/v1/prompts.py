@@ -10,7 +10,7 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID, uuid4
 from datetime import datetime, UTC
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -300,12 +300,12 @@ async def list_prompt_templates(
     
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to list prompt templates: {str(e)}"
         )
 
 
-@router.post("/", response_model=PromptTemplateResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=PromptTemplateResponse, status_code=201)
 async def create_prompt_template(
     template_data: PromptTemplateCreate,
     db: AsyncSession = Depends(get_database_session),
@@ -327,7 +327,7 @@ async def create_prompt_template(
         existing = await repository.find_by_criteria(name=template_data.name)
         if existing:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
+                status_code=409,
                 detail=f"Template with name '{template_data.name}' already exists"
             )
         
@@ -350,7 +350,7 @@ async def create_prompt_template(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to create prompt template: {str(e)}"
         )
 
@@ -377,7 +377,7 @@ async def get_prompt_template(
         
         if not template:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Template with ID {template_id} not found"
             )
         
@@ -405,7 +405,7 @@ async def get_prompt_template(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to get prompt template: {str(e)}"
         )
 
@@ -433,7 +433,7 @@ async def update_prompt_template(
         existing_template = await repository.get_by_id(template_id)
         if not existing_template:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Template with ID {template_id} not found"
             )
         
@@ -442,7 +442,7 @@ async def update_prompt_template(
             existing_name = await repository.find_by_criteria(name=template_updates.name)
             if existing_name:
                 raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
+                    status_code=409,
                     detail=f"Template with name '{template_updates.name}' already exists"
                 )
         
@@ -457,12 +457,12 @@ async def update_prompt_template(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to update prompt template: {str(e)}"
         )
 
 
-@router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{template_id}", status_code=204)
 async def delete_prompt_template(
     template_id: UUID,
     db: AsyncSession = Depends(get_database_session),
@@ -483,14 +483,14 @@ async def delete_prompt_template(
         existing_template = await repository.get_by_id(template_id)
         if not existing_template:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Template with ID {template_id} not found"
             )
         
         # Prevent deletion of system templates
         if existing_template.is_system:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=403,
                 detail="Cannot delete system templates"
             )
         
@@ -498,7 +498,7 @@ async def delete_prompt_template(
         deleted = await repository.delete(template_id)
         if not deleted:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status_code=500,
                 detail="Failed to delete template"
             )
     
@@ -506,14 +506,14 @@ async def delete_prompt_template(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to delete prompt template: {str(e)}"
         )
 
 
 # Version Management Endpoints
 
-@router.post("/{template_id}/versions", response_model=PromptVersionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{template_id}/versions", response_model=PromptVersionResponse, status_code=201)
 async def create_prompt_version(
     template_id: UUID,
     version_data: PromptVersionCreate,
@@ -538,7 +538,7 @@ async def create_prompt_version(
         template = await template_repo.get_by_id(template_id)
         if not template:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Template with ID {template_id} not found"
             )
         
@@ -587,7 +587,7 @@ async def create_prompt_version(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to create prompt version: {str(e)}"
         )
 
@@ -606,7 +606,7 @@ async def list_prompt_versions(
         template = await template_repo.get_by_id(template_id)
         if not template:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=404,
                 detail=f"Template with ID {template_id} not found"
             )
         
@@ -636,7 +636,7 @@ async def list_prompt_versions(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to list prompt versions: {str(e)}"
         )
 
@@ -709,6 +709,6 @@ async def generate_prompt(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Failed to generate prompt: {str(e)}"
         )

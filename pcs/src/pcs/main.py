@@ -244,7 +244,6 @@ def setup_routes(app: FastAPI, settings: Settings) -> None:
     from .api.v1.contexts import router as contexts_router
     from .api.v1.conversations import router as conversations_router
     from .api.v1.admin import router as admin_router
-    
     app.include_router(health_router, prefix=f"{settings.api_prefix}/health", tags=["health"])
     app.include_router(prompts_router, prefix=settings.api_prefix, tags=["prompts"])
     app.include_router(contexts_router, prefix=settings.api_prefix, tags=["contexts"])
