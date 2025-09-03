@@ -18,6 +18,9 @@ volumes:
   prometheus_data:
   grafana_data:
   backup_cache:
+  ollama_data: # Ollama configuration and cache
+  ollama_models:
+    # Downloaded models storage
 
 
 services:
@@ -116,6 +119,56 @@ services:
         reservations:
           memory: 2G
 
+  # Ollama LLM Service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: digi-ollama
+    restart: unless-stopped
+    environment:
+      # Core Ollama configuration
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_NUM_PARALLEL=4
+      - OLLAMA_MAX_LOADED_MODELS=3
+
+      # AMD GPU configuration
+      - OLLAMA_GPU_LAYERS=${OLLAMA_GPU_LAYERS:-35}
+      - OLLAMA_GPU_MEMORY_FRACTION=${OLLAMA_GPU_MEMORY_FRACTION:-0.9}
+
+      # Performance tuning
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_NUM_THREAD=${OLLAMA_NUM_THREAD:-16}
+
+      # Logging
+      - OLLAMA_LOG_LEVEL=${OLLAMA_LOG_LEVEL:-INFO}
+
+    volumes:
+      - ollama_data:/root/.ollama
+      - ollama_models:/root/.ollama/models
+    networks:
+      - digi-net
+    ports:
+      - "11434:11434" # Ollama API
+    deploy:
+      resources:
+        limits:
+          memory: 12G
+          cpus: '4.0'
+        reservations:
+          memory: 12G
+          cpus: '4.0'
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:11434/api/tags" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    devices:
+      # AMD GPU access (ROCm)
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+
   # Redis Cache
   redis:
     image: redis:7
@@ -191,6 +244,11 @@ services:
       - PCS_NEO4J_URI=bolt://neo4j:7687
       - PCS_NEO4J_USER=neo4j
       - PCS_NEO4J_PASSWORD=${NEO4J_PASSWORD:-digi_secure_123}
+      # Ollama LLM integration
+      - PCS_OLLAMA_HOST=ollama
+      - PCS_OLLAMA_PORT=11434
+      - PCS_OLLAMA_MODEL=${PCS_OLLAMA_MODEL:-llama3.1:8b}
+      - PCS_OLLAMA_TIMEOUT=${PCS_OLLAMA_TIMEOUT:-300}
     ports:
       - "8000:8000"
     volumes:
@@ -200,6 +258,7 @@ services:
       - redis
       - qdrant
       - neo4j
+      - ollama
     networks:
       - digi-net
     healthcheck:
@@ -219,6 +278,7 @@ services:
       - qdrant
       - redis
       - pcs
+      - ollama
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
@@ -229,6 +289,8 @@ services:
       - neo4j_data:/backup/neo4j_data:ro
       - qdrant_data:/backup/qdrant_data:ro
       - redis_data:/backup/redis_data:ro
+      - ollama_data:/backup/ollama_data:ro
+      - ollama_models:/backup/ollama_models:ro
       - backup_cache:/root/.cache/restic
     entrypoint: [ "/bin/sh", "-c" ]
     command: |
