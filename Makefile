@@ -93,12 +93,12 @@ prod: ## Alias for private-up (production / public-host)
 	@$(MAKE) private-up
 
 test: ## Run compose contract tests + optional live health
-	@uv run --with pyyaml pytest tests/test_private_compose.py -q
+	@uv run --with pytest --with pyyaml pytest tests/test_private_compose.py -q
 	@echo "Compose contract tests passed."
 
 update: ## Update all images to latest versions
-	docker compose pull
-	docker compose up -d
+	docker compose $(PRIVATE_COMPOSE) pull
+	docker compose $(PRIVATE_COMPOSE) up -d
 
 monitor: ## Open monitoring interfaces (local digi only)
 	@echo "Monitoring UIs require make up / make digi (published ports)."

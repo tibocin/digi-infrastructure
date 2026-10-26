@@ -21,24 +21,49 @@ else
   dc() { docker compose -f docker-compose.yml -f docker-compose.prod.yml "$@"; }
 fi
 
+# Why: compose up -d returns before healthchecks finish (40s start_period on neo4j/pcs).
+retry() {
+  local description="$1"
+  shift
+  local max_wait="${HEALTH_WAIT_SECONDS:-90}"
+  local interval="${HEALTH_RETRY_INTERVAL:-3}"
+  local start
+  start=$(date +%s)
+  while true; do
+    if "$@"; then
+      return 0
+    fi
+    if (( $(date +%s) - start >= max_wait )); then
+      echo "${description}: not ready after ${max_wait}s" >&2
+      "$@"
+      return 1
+    fi
+    sleep "$interval"
+  done
+}
+
+check_redis() {
+  dc exec -T redis redis-cli ping | grep -qi PONG
+}
+
 echo "Checking infrastructure health (compose exec)..."
 
 echo "Container status..."
 dc ps
 
 echo "PostgreSQL..."
-dc exec -T postgres pg_isready -U "${POSTGRES_USER:-digi}"
+retry "PostgreSQL" dc exec -T postgres pg_isready -U "${POSTGRES_USER:-digi}"
 
 echo "Neo4j..."
-dc exec -T neo4j wget -q -O /dev/null http://localhost:7474
+retry "Neo4j" dc exec -T neo4j wget -q -O /dev/null http://localhost:7474
 
 echo "Qdrant..."
-dc exec -T qdrant sh -c 'nc -z localhost 6333'
+retry "Qdrant" dc exec -T qdrant sh -c 'nc -z localhost 6333'
 
 echo "Redis..."
-dc exec -T redis redis-cli ping | grep -qi PONG
+retry "Redis" check_redis
 
 echo "PCS..."
-dc exec -T pcs curl -sf "http://localhost:8000/api/v1/health/" >/dev/null
+retry "PCS" dc exec -T pcs curl -sf "http://localhost:8000/api/v1/health/" >/dev/null
 
 echo "Infrastructure health check completed."
