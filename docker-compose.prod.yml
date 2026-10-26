@@ -1,0 +1,34 @@
+# -----------------------------------------------------------------------------
+# File: docker-compose.prod.yml
+# Purpose: Production / public-host overlay — keep data-plane ports unpublished
+# Related: docker-compose.yml, docs/PRIVATE_STACK.md, tkt:infra-stack-up
+# Tags: compose, production, private-network
+# -----------------------------------------------------------------------------
+# Use with explicit files so docker-compose.override.yml is NOT auto-merged:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   make private-up
+#   make prod
+#
+# Base docker-compose.yml already omits host ports for PCS and the data stores.
+# This overlay documents the private-stack contract and can pin prod-only env.
+# Do not add host port mappings for postgres, neo4j, qdrant, redis, or pcs.
+# -----------------------------------------------------------------------------
+
+services:
+  postgres:
+    restart: unless-stopped
+
+  neo4j:
+    restart: unless-stopped
+
+  qdrant:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
+
+  pcs:
+    restart: unless-stopped
+    environment:
+      - PCS_ENVIRONMENT=${PCS_ENVIRONMENT:-production}
+      - PCS_DEBUG=${PCS_DEBUG:-false}

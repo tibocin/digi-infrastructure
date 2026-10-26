@@ -75,33 +75,37 @@ The **Prompt and Context Service (PCS)** now features a **production-ready, modu
 
 3. **Start infrastructure**
 
+   **Public / private host (ports unpublished — preferred for showcase):**
+
+   ```bash
+   make private-up
+   make private-health
+   make assert-private-ports
+   ```
+
+   See [docs/PRIVATE_STACK.md](docs/PRIVATE_STACK.md).
+
+   **Local digi (publishes ports via override):**
+
    ```bash
    make up
-   ```
-
-4. **Verify health**
-   ```bash
    make health
-   ```
-
-5. **Start PCS service**
-   ```bash
-   cd pcs
-   uv sync --extra dev
-   uv run pcs-server
    ```
 
 ## Services
 
-| Service    | Port     | Purpose                      | Access                                     |
-| ---------- | -------- | ---------------------------- | ------------------------------------------ |
-| PostgreSQL | 5432     | Relational database          | `postgresql://user:pass@localhost:5432/db` |
-| Neo4j      | 7474     | Graph database               | `http://localhost:7474`                    |
-| Qdrant     | 6333     | Vector database              | `http://localhost:6333`                    |
-| Redis      | 6379     | Cache & sessions             | `redis://localhost:6379`                   |
-| **PCS**    | **8000** | **Prompt & Context Service** | **`http://localhost:8000`**                |
-| Prometheus | 9090     | Metrics collection           | `http://localhost:9090`                    |
-| Grafana    | 3000     | Monitoring dashboards        | `http://localhost:3000`                    |
+| Service    | Container port | Purpose                      | Host publish                          |
+| ---------- | -------------- | ---------------------------- | ------------------------------------- |
+| PostgreSQL | 5432           | Relational database          | private: none / local override: 5432  |
+| Neo4j      | 7474 / 7687    | Graph database               | private: none / local: 7474, 7687     |
+| Qdrant     | 6333 / 6334    | Vector database              | private: none / local: 6333, 6334     |
+| Redis      | 6379           | Cache & sessions             | private: none / local: 6379           |
+| **PCS**    | **8000**       | **Prompt & Context Service** | private: none / local: 8000           |
+| Prometheus | 9090           | Metrics collection           | local override only                   |
+| Grafana    | 3000           | Monitoring dashboards        | local override only                   |
+
+On the private stack, peers reach services by compose DNS on `digi-net`
+(e.g. `http://pcs:8000`), not via host localhost.
 
 ## Multi-App Database Setup
 

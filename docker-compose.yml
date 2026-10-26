@@ -37,8 +37,13 @@ services:
       - ./scripts/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh:ro
     networks:
       - digi-net
-    ports:
-      - "5432:5432" # Expose for external connections
+    # Host ports unpublished by default (private digi-net only).
+    # Local publish lives in docker-compose.override.yml.
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-digi}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Neo4j Graph Database
   neo4j:
@@ -52,9 +57,13 @@ services:
       - neo4j_data:/data
     networks:
       - digi-net
-    ports:
-      - "7474:7474" # HTTP
-      - "7687:7687" # Bolt
+    # Host ports unpublished by default (private digi-net only).
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1" ]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   # Qdrant Vector Database (REPLACES ChromaDB)
   qdrant:
@@ -101,9 +110,7 @@ services:
       - qdrant_snapshots:/qdrant/snapshots
     networks:
       - digi-net
-    ports:
-      - "6333:6333" # HTTP API
-      - "6334:6334" # gRPC API
+    # Host ports unpublished by default (private digi-net only).
     healthcheck:
       test: [ "CMD", "nc", "-z", "localhost", "6333" ]
       interval: 30s
@@ -125,16 +132,19 @@ services:
       - redis_data:/data
     networks:
       - digi-net
-    ports:
-      - "6379:6379"
+    # Host ports unpublished by default (private digi-net only).
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Monitoring Stack
   prometheus:
     image: prom/prometheus:latest
     container_name: digi-prometheus
     restart: unless-stopped
-    ports:
-      - "9090:9090"
+    # Host ports unpublished by default; publish via override for local digi.
     volumes:
       - prometheus_data:/prometheus
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
@@ -152,8 +162,7 @@ services:
     image: grafana/grafana:latest
     container_name: digi-grafana
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    # Host ports unpublished by default; publish via override for local digi.
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
@@ -191,8 +200,8 @@ services:
       - PCS_NEO4J_URI=bolt://neo4j:7687
       - PCS_NEO4J_USER=neo4j
       - PCS_NEO4J_PASSWORD=${NEO4J_PASSWORD:-digi_secure_123}
-    ports:
-      - "8000:8000"
+    # Host ports unpublished by default (private digi-net only).
+    # digi-core (and peers) reach PCS as http://pcs:8000 on digi-net.
     volumes:
       - ./pcs/logs:/app/logs
     depends_on:

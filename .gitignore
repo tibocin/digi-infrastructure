@@ -103,3 +103,6 @@ pcs/env_db-shm
 pcs/env_db-wal
 pcs/test_db-shm
 pcs/test_db-wal
+
+# Agent OS session runtime
+.devao/
