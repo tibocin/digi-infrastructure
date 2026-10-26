@@ -1,49 +1,44 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # -----------------------------------------------------------------------------
 # File: scripts/health-check.sh
-# Purpose: Infrastructure health check script
-# Related: docker-compose.yml
-# Tags: health-check, monitoring, infrastructure
+# Purpose: Health-check PCS + data stores via private compose network
+# Related: docker-compose.yml, docs/PRIVATE_STACK.md, tkt:infra-stack-up
+# Tags: health-check, monitoring, infrastructure, private-network
+# -----------------------------------------------------------------------------
+# Why: private mode has no host port publish; use compose exec, not localhost.
+# Side effects: none. Does not print secret values or origin addresses.
 # -----------------------------------------------------------------------------
 
-set -e
+set -euo pipefail
 
-# Get Qdrant API key from .env file
-if [ -f .env ]; then
-    QDRANT_API_KEY=$(grep '^QDRANT_API_KEY=' .env | cut -d'=' -f2)
-    export QDRANT_API_KEY
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+if [[ -n "${COMPOSE_FILE:-}" ]]; then
+  dc() { docker compose "$@"; }
+else
+  # Default: private stack (skip auto-loaded override).
+  dc() { docker compose -f docker-compose.yml -f docker-compose.prod.yml "$@"; }
 fi
 
-echo "🔍 Checking infrastructure health..."
+echo "Checking infrastructure health (compose exec)..."
 
-# Check if containers are running
-echo "📦 Checking container status..."
-docker compose ps
+echo "Container status..."
+dc ps
 
-# Check PostgreSQL
-echo "🐘 Checking PostgreSQL..."
-docker compose exec -T postgres pg_isready -U digi
+echo "PostgreSQL..."
+dc exec -T postgres pg_isready -U "${POSTGRES_USER:-digi}"
 
-# Check Neo4j
-echo "🕸️  Checking Neo4j..."
-curl -f http://localhost:7474/browser/ || echo "Neo4j not accessible"
+echo "Neo4j..."
+dc exec -T neo4j wget -q -O /dev/null http://localhost:7474
 
-# Check Qdrant
-echo "🔍 Checking Qdrant..."
-curl -H "api-key: ${QDRANT_API_KEY:-}" -f http://localhost:6333/collections || echo "Qdrant not accessible"
+echo "Qdrant..."
+dc exec -T qdrant sh -c 'nc -z localhost 6333'
 
-# Check Redis
-echo "🔴 Checking Redis..."
-docker compose exec -T redis redis-cli ping
+echo "Redis..."
+dc exec -T redis redis-cli ping | grep -qi PONG
 
-# Check Prometheus
-echo "📊 Checking Prometheus..."
-curl -f http://localhost:9090/-/healthy || echo "Prometheus not accessible"
+echo "PCS..."
+dc exec -T pcs curl -sf "http://localhost:8000/api/v1/health/" >/dev/null
 
-# Check Grafana
-echo "📈 Checking Grafana..."
-curl -f http://localhost:3000/api/health || echo "Grafana not accessible"
-
-echo "✅ Infrastructure health check completed"
-
-
+echo "Infrastructure health check completed."

@@ -1,8 +1,13 @@
 # -----------------------------------------------------------------------------
 # File: docker-compose.override.yml
-# Purpose: Development overrides for digi-infrastructure
-# Related: docker-compose.yml
+# Purpose: Local-dev host port publish for digi-infrastructure
+# Related: docker-compose.yml, docker-compose.prod.yml, docs/PRIVATE_STACK.md
 # Tags: compose, development, override
+# -----------------------------------------------------------------------------
+# Auto-loaded by `docker compose up` / `make up` / `make dev`.
+# Private / public-host mode MUST use explicit -f flags so this file is skipped:
+#   docker compose -f docker-compose.yml up -d
+#   make private-up
 # -----------------------------------------------------------------------------
 
 services:
@@ -27,6 +32,10 @@ services:
   redis:
     ports:
       - "6379:6379" # Redis CLI
+
+  pcs:
+    ports:
+      - "8000:8000" # PCS HTTP (local digi only)
 
   grafana:
     ports:
