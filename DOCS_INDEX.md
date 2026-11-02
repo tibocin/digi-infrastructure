@@ -23,6 +23,7 @@ Welcome to the central entry point for all Digi Infrastructure documentation. Th
 ## Schema and Database Management
 
 - [Schema Management](./docs/SCHEMA_MANAGEMENT.md) - Explanation of schema and migration management per app in the multi-app architecture.
+- [query_responses array columns SQL](./scripts/sql/fix_query_responses_array_columns.sql) - One-transaction digi_core hotfix (`tkt:query-responses-array-columns`); never apply to cvpunk.
 
 ## Infrastructure
 
