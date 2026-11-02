@@ -15,6 +15,9 @@
 data/
 volumes/
 *.sql
+# Tracked one-shot schema hotfixes (not dumps)
+!scripts/sql/
+!scripts/sql/*.sql
 *.dump
 
 # Logs
