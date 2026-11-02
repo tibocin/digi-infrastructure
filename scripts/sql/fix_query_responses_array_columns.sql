@@ -36,45 +36,50 @@ BEGIN
   END IF;
 END $$;
 
+-- Scalar helpers: USING cannot contain subqueries or set-returning functions.
+CREATE OR REPLACE FUNCTION pg_temp.qr_json_to_varchar_array(j json)
+RETURNS character varying[]
+LANGUAGE sql
+IMMUTABLE
+STRICT
+AS $$
+  SELECT COALESCE(
+    array_agg(elem ORDER BY ord),
+    ARRAY[]::character varying[]
+  )
+  FROM json_array_elements_text(j) WITH ORDINALITY AS t(elem, ord);
+$$;
+
+CREATE OR REPLACE FUNCTION pg_temp.qr_json_to_double_array(j json)
+RETURNS double precision[]
+LANGUAGE sql
+IMMUTABLE
+STRICT
+AS $$
+  SELECT COALESCE(
+    array_agg(elem::double precision ORDER BY ord),
+    ARRAY[]::double precision[]
+  )
+  FROM json_array_elements_text(j) WITH ORDINALITY AS t(elem, ord);
+$$;
+
 -- 2) String id columns: json arrays → character varying[] (NULLs stay NULL).
 ALTER TABLE query_responses
   ALTER COLUMN sources_used TYPE character varying[]
-  USING (
-    CASE
-      WHEN sources_used IS NULL THEN NULL
-      ELSE ARRAY(SELECT json_array_elements_text(sources_used))
-    END
-  );
+  USING (pg_temp.qr_json_to_varchar_array(sources_used));
 
 ALTER TABLE query_responses
   ALTER COLUMN chroma_document_ids TYPE character varying[]
-  USING (
-    CASE
-      WHEN chroma_document_ids IS NULL THEN NULL
-      ELSE ARRAY(SELECT json_array_elements_text(chroma_document_ids))
-    END
-  );
+  USING (pg_temp.qr_json_to_varchar_array(chroma_document_ids));
 
 ALTER TABLE query_responses
   ALTER COLUMN neo4j_node_ids TYPE character varying[]
-  USING (
-    CASE
-      WHEN neo4j_node_ids IS NULL THEN NULL
-      ELSE ARRAY(SELECT json_array_elements_text(neo4j_node_ids))
-    END
-  );
+  USING (pg_temp.qr_json_to_varchar_array(neo4j_node_ids));
 
 -- 3) query_embedding: json array of numbers → double precision[].
 ALTER TABLE query_responses
   ALTER COLUMN query_embedding TYPE double precision[]
-  USING (
-    CASE
-      WHEN query_embedding IS NULL THEN NULL
-      ELSE ARRAY(
-        SELECT json_array_elements_text(query_embedding)::double precision
-      )
-    END
-  );
+  USING (pg_temp.qr_json_to_double_array(query_embedding));
 
 -- 4) response_metadata remains json (no change).
 
