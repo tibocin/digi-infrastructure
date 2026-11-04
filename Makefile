@@ -8,7 +8,7 @@
 # Private stack uses explicit -f so override (host ports) is not auto-merged.
 PRIVATE_COMPOSE := -f docker-compose.yml -f docker-compose.prod.yml
 
-.PHONY: help up down restart logs ps health private-up private-down private-health assert-private-ports backup restore clean init status
+.PHONY: help up up-local-llm down restart logs ps health private-up private-down private-health assert-private-ports backup restore clean init status
 
 help: ## Show this help message
 	@echo "Digi Infrastructure Management"
@@ -17,8 +17,11 @@ help: ## Show this help message
 	@echo "Available commands:"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-up: ## Start with local override (publishes ports)
+up: ## Start with local override (publishes ports; no Ollama)
 	docker compose up -d
+
+up-local-llm: ## Local digi + opt-in Ollama (profile local-llm)
+	COMPOSE_PROFILES=local-llm docker compose up -d
 
 down: ## Stop infrastructure services (default project)
 	docker compose down

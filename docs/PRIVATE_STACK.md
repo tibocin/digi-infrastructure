@@ -25,8 +25,13 @@ make assert-private-ports    # fail if data-plane ports are published
 ## Local digi (ports published)
 
 ```bash
-make up    # or make dev — loads override, publishes ports for laptop work
+make up            # or make dev — loads override, publishes ports for laptop work
+make up-local-llm  # same + opt-in Ollama (COMPOSE_PROFILES=local-llm)
 ```
+
+Apps default to OpenRouter. Ollama is **not** part of `private-up`; it is an
+optional compose profile (`local-llm`) for local model override. When enabled
+with the override file, the API publishes on host `11435` (container `11434`).
 
 ## Contract
 
@@ -37,6 +42,7 @@ make up    # or make dev — loads override, publishes ports for laptop work
 | qdrant   | none                 | `qdrant:6333`              |
 | redis    | none                 | `redis:6379`               |
 | pcs      | none                 | `http://pcs:8000`          |
+| ollama   | none (opt-in only)   | `ollama:11434` if profile  |
 
 Do not record secret values or origin addresses in git, health logs committed
 to the repo, or runbooks that land in this ticket.

@@ -18,6 +18,9 @@ volumes:
   prometheus_data:
   grafana_data:
   backup_cache:
+  ollama_data: # Ollama configuration and cache
+  ollama_models:
+    # Downloaded models storage
 
 
 services:
@@ -123,6 +126,46 @@ services:
         reservations:
           memory: 2G
 
+  # Optional local LLM (OpenRouter is the default provider for apps).
+  # Opt-in only: COMPOSE_PROFILES=local-llm or `make up-local-llm`.
+  # Never hard-depends from PCS/backup — private-up must stay stores + PCS.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: digi-ollama
+    profiles: [local-llm]
+    restart: unless-stopped
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS=${OLLAMA_ORIGINS:-}
+      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-24h}
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
+      - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-3}
+      - OLLAMA_FLASH_ATTENTION=${OLLAMA_FLASH_ATTENTION:-1}
+      - OLLAMA_NUM_THREADS=${OLLAMA_NUM_THREAD:-10}
+      - OLLAMA_LOG_LEVEL=${OLLAMA_LOG_LEVEL:-INFO}
+    volumes:
+      - ollama_data:/root/.ollama
+      - ollama_models:/root/.ollama/models
+    networks:
+      - digi-net
+    # Host ports unpublished by default (private digi-net only).
+    # Local publish lives in docker-compose.override.yml when profile is on.
+    deploy:
+      resources:
+        limits:
+          memory: ${OLLAMA_MEMORY_LIMIT:-12G}
+          cpus: "${OLLAMA_CPU_LIMIT:-12.0}"
+        reservations:
+          memory: ${OLLAMA_MEMORY_RESERVE:-4G}
+          cpus: "${OLLAMA_CPU_RESERVE:-2.0}"
+    # #ANNOTATION: ollama image has no curl; use native CLI for health
+    healthcheck:
+      test: [ "CMD", "ollama", "list" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
   # Redis Cache
   redis:
     image: redis:7
@@ -200,6 +243,8 @@ services:
       - PCS_NEO4J_URI=bolt://neo4j:7687
       - PCS_NEO4J_USER=neo4j
       - PCS_NEO4J_PASSWORD=${NEO4J_PASSWORD:-digi_secure_123}
+    # Default LLM path is OpenRouter (keys in .env / app config).
+    # Optional local Ollama: profile local-llm + PCS_OLLAMA_* in .env.
     # Host ports unpublished by default (private digi-net only).
     # digi-core (and peers) reach PCS as http://pcs:8000 on digi-net.
     volumes:

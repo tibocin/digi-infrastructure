@@ -66,3 +66,21 @@ def test_override_publishes_for_local_dev() -> None:
     for name in PRIVATE_SERVICES:
         ports = _published_host_ports(services.get(name))
         assert ports, f"override should publish {name} for local digi"
+
+
+def test_ollama_is_opt_in_local_llm_profile() -> None:
+    """OpenRouter is default; Ollama must not join private-up via depends_on."""
+    base = _load_yaml("docker-compose.yml")
+    services = base["services"]
+    ollama = services["ollama"]
+    assert ollama.get("profiles") == ["local-llm"]
+    assert not _published_host_ports(ollama), "base ollama must stay unpublished"
+
+    pcs_deps = set(services["pcs"].get("depends_on") or [])
+    backup_deps = set(services["backup-sidecar"].get("depends_on") or [])
+    assert "ollama" not in pcs_deps
+    assert "ollama" not in backup_deps
+
+    override = _load_yaml("docker-compose.override.yml")
+    ollama_ports = _published_host_ports(override["services"].get("ollama"))
+    assert 11435 in ollama_ports

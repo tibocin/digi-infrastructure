@@ -107,11 +107,11 @@ user_applications:
     description: "Beep-Boop automation application"
     status: "planned"
     
-  other_app_1:
+  digi_core_portal:
     external: 3002
     internal: 8000
-    service: other-app-1
-    description: "Additional application 1"
+    service: digi-core-portal
+    description: "Portal to add and edit content to digi-core"
     status: "planned"
     
   other_app_2:
