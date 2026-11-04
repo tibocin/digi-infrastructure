@@ -145,7 +145,7 @@ services:
 
       # Performance tuning
       - OLLAMA_FLASH_ATTENTION=1
-      - OLLAMA_NUM_THREAD=${OLLAMA_NUM_THREAD:-16}
+      - OLLAMA_NUM_THREADS=${OLLAMA_NUM_THREAD:-10}
 
       # Logging
       - OLLAMA_LOG_LEVEL=${OLLAMA_LOG_LEVEL:-INFO}
@@ -155,26 +155,24 @@ services:
       - ollama_models:/root/.ollama/models
     networks:
       - digi-net
+    # Host :11434 is taken by systemd ollama; expose digi models on 11435
     ports:
-      - "11434:11434" # Ollama API
+      - "11435:11434" # Ollama API (host) -> container 11434
     deploy:
       resources:
         limits:
           memory: 12G
-          cpus: '4.0'
+          cpus: '12.0'
         reservations:
           memory: 12G
           cpus: '4.0'
+    # #ANNOTATION: ollama image has no curl; use native CLI for health
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:11434/api/tags" ]
+      test: [ "CMD", "ollama", "list" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 120s
-    devices:
-      # AMD GPU access (ROCm)
-      - /dev/kfd:/dev/kfd
-      - /dev/dri:/dev/dri
 
   # Redis Cache
   redis:
