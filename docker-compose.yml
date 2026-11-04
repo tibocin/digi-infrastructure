@@ -155,9 +155,8 @@ services:
       - ollama_models:/root/.ollama/models
     networks:
       - digi-net
-    # Host :11434 is taken by systemd ollama; expose digi models on 11435
-    ports:
-      - "11435:11434" # Ollama API (host) -> container 11434
+    # Host ports unpublished by default (private digi-net only).
+    # Local publish lives in docker-compose.override.yml.
     deploy:
       resources:
         limits:

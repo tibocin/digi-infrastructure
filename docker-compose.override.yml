@@ -33,6 +33,11 @@ services:
     ports:
       - "6379:6379" # Redis CLI
 
+  ollama:
+    ports:
+      # Host :11434 is taken by systemd ollama; expose digi models on 11435
+      - "11435:11434" # Ollama API (local digi only)
+
   pcs:
     ports:
       - "8000:8000" # PCS HTTP (local digi only)
