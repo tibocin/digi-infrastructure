@@ -33,6 +33,12 @@ services:
     ports:
       - "6379:6379" # Redis CLI
 
+  # Only starts when COMPOSE_PROFILES=local-llm (see `make up-local-llm`).
+  ollama:
+    ports:
+      # Host :11434 often taken by systemd ollama; digi compose uses 11435
+      - "11435:11434" # Ollama API (local digi + local-llm profile only)
+
   pcs:
     ports:
       - "8000:8000" # PCS HTTP (local digi only)

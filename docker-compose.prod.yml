@@ -10,6 +10,7 @@
 #   make prod
 #
 # Base docker-compose.yml already omits host ports for PCS and the data stores.
+# Ollama uses profile local-llm and is not part of private-up / prod defaults.
 # This overlay documents the private-stack contract and can pin prod-only env.
 # Do not add host port mappings for postgres, neo4j, qdrant, redis, or pcs.
 # -----------------------------------------------------------------------------
