@@ -13,6 +13,7 @@ directory is allow-listed in `.gitignore`.
 | Script | Database | Notes |
 |--------|----------|-------|
 | `fix_query_responses_array_columns.sql` | `digi_core` only | Converts json-shaped array columns to native arrays. Never `cvpunk`. |
+| `create_share_artifacts.sql` | `digi_core` only | Durable published/draft/revoked resumes for `/resumes` and `/r/{slug}`. |
 
 Apply example:
 
